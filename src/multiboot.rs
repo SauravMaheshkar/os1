@@ -27,7 +27,32 @@ pub struct MulitbootInfo {
 #[repr(C, packed)]
 pub struct MultibootMmapEntry {
     size: u32,
-    pub addr: u64,
-    pub length: u64,
+    addr_low: u32,
+    addr_high: u32,
+    pub length_low: u32,
+    length_high: u32,
     mmap_type: u32,
+}
+
+pub unsafe fn describe_mmap_sections(multibootinfo: *const MulitbootInfo) {
+    let mmap_length = (*multibootinfo).mmap_length;
+    println!("mmap length: {mmap_length}");
+    println!("Memory Segments:- ");
+
+    for i in 0..(*multibootinfo).mmap_length {
+        let offset = core::mem::size_of::<MultibootMmapEntry>() as u32 * i;
+        let mmap_entry = (*multibootinfo)
+            .mmap_addr
+            .checked_add(offset)
+            .expect("memory map entry address overflow")
+            as *const MultibootMmapEntry;
+
+        let length = (*mmap_entry).length_low;
+        let size = (*mmap_entry).size;
+        if size == 0 {
+            break;
+        }
+        let addr = (*mmap_entry).addr_low;
+        println!("* Size: {size}, Length: {length}, Address: {addr}");
+    }
 }

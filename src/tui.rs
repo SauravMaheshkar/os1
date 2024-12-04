@@ -5,6 +5,17 @@
 //! # References
 //! * [Bare Bones - OSDev Wiki](https://wiki.osdev.org/Bare_Bones)
 
+use core::sync::atomic::Ordering::Relaxed;
+use core::{
+    fmt::Write,
+    sync::atomic::{AtomicU8, AtomicUsize},
+};
+
+pub static TERMINAL: TerminalWriter = TerminalWriter::new();
+
+const VGA_HEIGHT: usize = 25;
+const VGA_WIDTH: usize = 80;
+
 /// Enum for the different colors available in the TUI
 ///
 /// The colors are based on the VGA color palette.
@@ -36,7 +47,7 @@ enum VgaColor {
 ///
 /// # Returns
 /// * A `u8` representing the color
-fn vga_entry_color(foreground: VgaColor, background: VgaColor) -> u8 {
+const fn vga_entry_color(foreground: VgaColor, background: VgaColor) -> u8 {
     (foreground as u8) | (background as u8) << 4
 }
 
@@ -48,18 +59,15 @@ fn vga_entry_color(foreground: VgaColor, background: VgaColor) -> u8 {
 ///
 /// # Returns
 /// * A `u16` representing the VGA Entry
-fn vga_entry(uc: u8, color: u8) -> u16 {
+const fn vga_entry(uc: u8, color: u8) -> u16 {
     uc as u16 | (color as u16) << 8
 }
 
 /// The Terminal Writer is responsible for writing to the VGA buffer.
 pub struct TerminalWriter {
-    row: usize,
-    column: usize,
-    color: u8,
+    cursor: AtomicUsize,
+    color: AtomicU8,
     buffer: *mut u16,
-    vga_height: usize,
-    vga_width: usize,
 }
 
 impl TerminalWriter {
@@ -68,50 +76,32 @@ impl TerminalWriter {
     /// * Default color is `LightGray` on `Black`.
     /// * Default `vga_height` is 25.
     /// * Default `vga_width` is 80.
-    pub fn new() -> TerminalWriter {
-        let vga_height: usize = 25;
-        let vga_width: usize = 80;
-        let row = 0;
-        let column = 0;
-        let color = vga_entry_color(VgaColor::LightGray, VgaColor::Black);
-
-        // VGA text mode buffer is located at 0xb8000
-        // Table 1.1: VGA Text Modes
-        // Source: https://web.archive.org/web/20150816220334/http://www.eyetap.org/cyborgs/manuals/soft_vga.pdf
+    const fn new() -> TerminalWriter {
+        let cursor = AtomicUsize::new(0);
+        let color = AtomicU8::new(vga_entry_color(VgaColor::LightGray, VgaColor::Black));
         let buffer = 0xb8000 as *mut u16;
 
+        TerminalWriter {
+            cursor,
+            color,
+            buffer,
+        }
+    }
+
+    pub fn init() -> &'static TerminalWriter {
+        let color = TERMINAL.color.load(Relaxed);
+
         // Fill the VGA buffer with spaces
-        for y in 0..vga_height {
-            for x in 0..vga_width {
-                let index = y * vga_width + x;
+        for y in 0..VGA_HEIGHT {
+            for x in 0..VGA_WIDTH {
+                let index = y * VGA_WIDTH + x;
                 unsafe {
-                    *buffer.add(index) = vga_entry(b' ', color);
+                    *TERMINAL.buffer.add(index) = vga_entry(b' ', color);
                 }
             }
         }
 
-        TerminalWriter {
-            row,
-            column,
-            color,
-            buffer,
-            vga_height,
-            vga_width,
-        }
-    }
-
-    /// Put a character at a specific position in the VGA buffer.
-    ///
-    /// # Arguments
-    /// * `c` - The Unicode character as a `u8`
-    /// * `color` - The color from [`VgaColor`]
-    /// * `x` - The x position in the VGA buffer as a `usize`
-    /// * `y` - The y position in the VGA buffer as a `usize`
-    fn putentryat(&mut self, c: u8, color: u8, x: usize, y: usize) {
-        let index = y * self.vga_width + x;
-        unsafe {
-            *self.buffer.add(index) = vga_entry(c, color);
-        }
+        &TERMINAL
     }
 
     /// Write a string to the VGA buffer.
@@ -131,69 +121,27 @@ impl TerminalWriter {
     fn putchar(&mut self, c: u8) {
         // newline
         if c == b'\n' {
-            self.column = 0;
-            self.row += 1;
-            if self.row == self.vga_height {
-                self.row = 0;
-            }
+            let mut cursor = self.cursor.load(Relaxed);
+            cursor += VGA_WIDTH - (cursor % VGA_WIDTH);
+            self.cursor.store(cursor, Relaxed);
             return;
         }
 
-        self.putentryat(c, self.color, self.column, self.row);
-        self.column += 1;
+        let color = self.color.load(Relaxed);
+        let cursor = self.cursor.fetch_add(1, Relaxed);
 
-        // wrap around
-        if self.column == self.vga_width {
-            self.column = 0;
-            self.row += 1;
-            if self.row == self.vga_height {
-                self.row = 0;
-            }
+        unsafe {
+            *self.buffer.add(cursor) = vga_entry(c, color);
         }
-    }
-
-    /// Write a `u64` to the VGA buffer.
-    /// 
-    /// # Arguments
-    /// * `n` - The `u64` number
-    #[allow(dead_code)]
-    fn put_u64(&mut self, n: u64) {
-        self.put_u32((n >> 32) as u32); // high 32 bits
-        self.put_u32(n as u32); // low 32 bits
-    }
-
-    /// Write a `u32` to the VGA buffer.
-    /// 
-    /// # Arguments
-    /// * `n` - The `u32` number
-    pub fn put_u32(&mut self, n: u32) {
-        // count the number of digits
-        let mut num_digits = 1;
-        loop {
-            if n / 10_u32.pow(num_digits) == 0 {
-                break;
-            }
-            num_digits += 1;
-        }
-
-        // write the digits to the VGA buffer
-        for digit in (1..=num_digits).rev() {
-            let n = n / 10_u32.pow(digit - 1) % 10;
-            self.putchar((n + 0x30) as u8);
-        }
-    }
-
-    /// Write an `i32` to the VGA buffer.
-    /// 
-    /// # Arguments
-    /// * `n` - The `i32` number
-    #[allow(dead_code)]
-    fn put_i32(&mut self, mut n: i32) {
-        // negative numbers
-        if n < 0 {
-            self.putchar(b'-');
-            n = -n;
-        }
-        self.put_u32(n as u32);
     }
 }
+
+impl Write for TerminalWriter {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.write(s.as_bytes());
+        Ok(())
+    }
+}
+
+// Shared static variables must have a type that implements `Sync`
+unsafe impl Sync for TerminalWriter {}
