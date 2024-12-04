@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "cargo",
+            "label": "cargo build",
+            "command": "build"
+        },
+        {
+            "type": "cargo",
+            "label": "cargo check",
+            "command": "check"
+        },
+        {
+            "type": "cargo",
+            "label": "cargo clippy",
+            "command": "clippy"
+        },
+        {
+            "type": "cargo",
+            "label": "cargo clean",
+            "command": "clean"
+        },
+        {
+            "type": "cargo",
+            "label": "cargo doc",
+            "command": "doc"
+        },
+        {
+            "type": "shell",
+            "command": "qemu-system-i386 -kernel target/i686-unknown-none/debug/myos",
+            "label": "qemu run",
+            "problemMatcher": []
+        }
+    ]
+}

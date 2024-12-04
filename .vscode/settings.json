@@ -1,0 +1,7 @@
+{
+    "rust-analyzer.cargo.target": "targets/i686-unknown-none.json",
+    "rust-analyzer.cargo.autoreload": true,
+    "rust-analyzer.inlayHints.typeHints.enable": false,
+    "rust-analyzer.check.allTargets": false,
+    "rust-analyzer.check.command": "clippy",
+}
