@@ -42,6 +42,9 @@ pub unsafe extern "C" fn kernel_main(
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    // Print the message passed to `panic!`
+    // Source:
+    // * https://doc.rust-lang.org/beta/core/panic/struct.PanicInfo.html#method.message
     println!("Panic: {}", _info.message());
     loop {}
 }
