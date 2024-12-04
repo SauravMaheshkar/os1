@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT"
 
 [lints.clippy]
-new_without_default = "allow"
+macro_metavars_in_unsafe = "allow"
 
 [profile.dev]
 panic = "abort"
