@@ -1,6 +1,6 @@
 ```bash
 cargo build
-qemu-system-i386 -kernel target/i686-unknown-none/debug/kernel
+qemu-system-i386 -kernel target/i686-unknown-none/debug/os1
 ```
 
 ## Requirements

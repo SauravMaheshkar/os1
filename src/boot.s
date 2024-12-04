@@ -29,6 +29,10 @@ _start:
 	/* Set up stack */
 	mov $stack_top, %esp
 
+	/* Canvas */
+	push %ebx
+	push %eax
+
 	/* Enter kernel */
 	call kernel_main
 

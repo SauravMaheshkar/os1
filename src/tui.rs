@@ -151,4 +151,49 @@ impl TerminalWriter {
             }
         }
     }
+
+    /// Write a `u64` to the VGA buffer.
+    /// 
+    /// # Arguments
+    /// * `n` - The `u64` number
+    #[allow(dead_code)]
+    fn put_u64(&mut self, n: u64) {
+        self.put_u32((n >> 32) as u32); // high 32 bits
+        self.put_u32(n as u32); // low 32 bits
+    }
+
+    /// Write a `u32` to the VGA buffer.
+    /// 
+    /// # Arguments
+    /// * `n` - The `u32` number
+    pub fn put_u32(&mut self, n: u32) {
+        // count the number of digits
+        let mut num_digits = 1;
+        loop {
+            if n / 10_u32.pow(num_digits) == 0 {
+                break;
+            }
+            num_digits += 1;
+        }
+
+        // write the digits to the VGA buffer
+        for digit in (1..=num_digits).rev() {
+            let n = n / 10_u32.pow(digit - 1) % 10;
+            self.putchar((n + 0x30) as u8);
+        }
+    }
+
+    /// Write an `i32` to the VGA buffer.
+    /// 
+    /// # Arguments
+    /// * `n` - The `i32` number
+    #[allow(dead_code)]
+    fn put_i32(&mut self, mut n: i32) {
+        // negative numbers
+        if n < 0 {
+            self.putchar(b'-');
+            n = -n;
+        }
+        self.put_u32(n as u32);
+    }
 }
