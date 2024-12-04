@@ -7,12 +7,18 @@ mod macros;
 
 mod multiboot;
 mod tui;
+mod memalloc;
 
 use multiboot::MulitbootInfo;
 use tui::TerminalWriter;
 
+extern crate alloc;
+
 use core::arch::global_asm;
 use core::panic::PanicInfo;
+
+#[global_allocator]
+static ALLOC: memalloc::Allocator = memalloc::Allocator::new();
 
 global_asm!(include_str!("boot.s"));
 
@@ -29,6 +35,10 @@ pub unsafe extern "C" fn kernel_main(
     // Multiboot(1)-compliant bootloaders report themselves
     // with magic number 0x2BADB002
     assert_eq!(mulitboot_magic, 0x2BADB002);
+
+    // Canvas
+    let mut vec = alloc::vec::Vec::new();
+    vec.push(1);
 
     // Print bootloader name
     let boot_loader_name = (*_multiboot_info).boot_loader_name;
