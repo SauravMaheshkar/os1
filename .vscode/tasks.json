@@ -27,6 +27,11 @@
             "command": "doc"
         },
         {
+            "type": "cargo",
+            "label": "cargo fmt",
+            "command": "fmt"
+        },
+        {
             "type": "shell",
             "command": "qemu-system-i386 -kernel target/i686-unknown-none/debug/os1",
             "label": "qemu run",
