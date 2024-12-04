@@ -42,5 +42,6 @@ pub unsafe extern "C" fn kernel_main(
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    println!("Panic: {}", _info.message());
     loop {}
 }
