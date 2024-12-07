@@ -4,4 +4,12 @@
     "rust-analyzer.inlayHints.typeHints.enable": false,
     "rust-analyzer.check.allTargets": false,
     "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.rustfmt.extraArgs": [
+        "--config", "max_width=80",
+        "--config", "reorder_imports=true"
+    ],
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "editor.formatOnSave": true
+    }
 }
