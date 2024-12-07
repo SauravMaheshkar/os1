@@ -24,35 +24,46 @@ pub struct MulitbootInfo {
     apm_table: u32,
 }
 
+impl MulitbootInfo {
+    pub unsafe fn get_mmap_entries(&self) -> &[MultibootMmapEntry] {
+        // Number of entries in the memory map
+        let num_entries = (self.mmap_length as usize)
+            / core::mem::size_of::<MultibootMmapEntry>();
+
+        // Return a slice of the memory map entries
+        core::slice::from_raw_parts(
+            self.mmap_addr as *const MultibootMmapEntry,
+            num_entries,
+        )
+    }
+
+    pub unsafe fn describe(&self) {
+        let _entries = unsafe { self.get_mmap_entries() };
+        let mut total_memory = 0;
+        for i in 0.._entries.len() as u32 {
+            // Calculate the offset of the memory map entry
+            let offset = core::mem::size_of::<MultibootMmapEntry>() as u32 * i;
+            let mmap_entry = self
+                .mmap_addr
+                .checked_add(offset)
+                .expect("memory map entry address overflow")
+                as *const MultibootMmapEntry;
+
+            // Print the memory map entry
+            let length = (*mmap_entry).length as f32 / 1024.0;
+            let addr = (*mmap_entry).addr;
+            total_memory += (*mmap_entry).length;
+            println!("* Memory: {length}K, Address: {addr:#X}",);
+        }
+
+        println!("Total memory: {}M", total_memory as f32 / 1024.0 / 1024.0);
+    }
+}
+
 #[repr(C, packed)]
 pub struct MultibootMmapEntry {
     size: u32,
-    addr_low: u32,
-    addr_high: u32,
-    pub length_low: u32,
-    length_high: u32,
+    addr: u64,
+    length: u64,
     mmap_type: u32,
-}
-
-pub unsafe fn describe_mmap_sections(multibootinfo: *const MulitbootInfo) {
-    let mmap_length = (*multibootinfo).mmap_length;
-    println!("mmap length: {mmap_length}");
-    println!("Memory Segments:- ");
-
-    for i in 0..(*multibootinfo).mmap_length {
-        let offset = core::mem::size_of::<MultibootMmapEntry>() as u32 * i;
-        let mmap_entry = (*multibootinfo)
-            .mmap_addr
-            .checked_add(offset)
-            .expect("memory map entry address overflow")
-            as *const MultibootMmapEntry;
-
-        let length = (*mmap_entry).length_low;
-        let size = (*mmap_entry).size;
-        if size == 0 {
-            break;
-        }
-        let addr = (*mmap_entry).addr_low;
-        println!("* Size: {size}, Length: {length}, Address: {addr}");
-    }
 }

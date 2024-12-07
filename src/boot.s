@@ -30,6 +30,8 @@ _start:
 	mov $stack_top, %esp
 
 	/* Canvas */
+	/* eax contains the magic number */
+	/* ebx contains the address of the multiboot info structure */
 	push %ebx
 	push %eax
 

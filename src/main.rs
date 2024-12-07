@@ -5,9 +5,9 @@
 #[macro_use]
 mod macros;
 
+mod memalloc;
 mod multiboot;
 mod tui;
-mod memalloc;
 
 use multiboot::MulitbootInfo;
 use tui::TerminalWriter;
@@ -36,16 +36,12 @@ pub unsafe extern "C" fn kernel_main(
     // with magic number 0x2BADB002
     assert_eq!(mulitboot_magic, 0x2BADB002);
 
-    // Canvas
-    let mut vec = alloc::vec::Vec::new();
-    vec.push(1);
-
     // Print bootloader name
     let boot_loader_name = (*_multiboot_info).boot_loader_name;
     println_str!("Using bootloader: {}", boot_loader_name);
 
     unsafe {
-        multiboot::describe_mmap_sections(_multiboot_info);
+        (*_multiboot_info).describe();
     }
     0
 }
