@@ -3,7 +3,9 @@ ENTRY(_start)
 SECTIONS
 {
 	/* Starting Offset */
-	. = 2M;
+	. = 1M;
+
+	KERNEL_START_ADDR = .;
 
 	/* Multiboot Header */
 	.text BLOCK(4K) : ALIGN(4K)
@@ -30,4 +32,6 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 	}
+
+	KERNEL_END_ADDR = .;
 }

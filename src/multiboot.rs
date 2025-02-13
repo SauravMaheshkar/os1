@@ -5,8 +5,10 @@
 //! * <https://www.gnu.org/software/grub/manual/multiboot/multiboot.html>
 //! * <https://git.savannah.gnu.org/cgit/grub.git/tree/doc/multiboot.h?h=multiboot>
 
+use crate::{KERNEL_END_ADDR, KERNEL_START_ADDR};
+
 #[repr(C, packed)]
-pub struct MulitbootInfo {
+pub struct MultibootInfo {
     flags: u32,
     mem_lower: u32,
     mem_upper: u32,
@@ -24,20 +26,19 @@ pub struct MulitbootInfo {
     apm_table: u32,
 }
 
-impl MulitbootInfo {
+impl MultibootInfo {
     pub unsafe fn get_mmap_entries(&self) -> &[MultibootMmapEntry] {
         // Number of entries in the memory map
-        let num_entries = (self.mmap_length as usize)
-            / core::mem::size_of::<MultibootMmapEntry>();
+        let num_entries = (self.mmap_length as usize) / core::mem::size_of::<MultibootMmapEntry>();
 
         // Return a slice of the memory map entries
-        core::slice::from_raw_parts(
-            self.mmap_addr as *const MultibootMmapEntry,
-            num_entries,
-        )
+        core::slice::from_raw_parts(self.mmap_addr as *const MultibootMmapEntry, num_entries)
     }
 
     pub unsafe fn describe(&self) {
+        println!("Kernel start: {:?}", &KERNEL_START_ADDR as *const u32);
+        println!("Kernel end: {:?}", &KERNEL_END_ADDR as *const u32);
+
         let _entries = unsafe { self.get_mmap_entries() };
         let mut total_memory = 0;
         for i in 0.._entries.len() as u32 {
@@ -62,8 +63,8 @@ impl MulitbootInfo {
 
 #[repr(C, packed)]
 pub struct MultibootMmapEntry {
-    size: u32,
-    addr: u64,
-    length: u64,
-    mmap_type: u32,
+    pub size: u32,
+    pub addr: u64,
+    pub length: u64,
+    pub mmap_type: u32,
 }

@@ -13,8 +13,9 @@ panic = "abort"
 [profile.release]
 panic = "abort"
 
-# [[bin]]
-# name = "os1"
-# test = false
+[[bin]]
+name = "os1"
+test = false
+bench = false
 
 [dependencies]
