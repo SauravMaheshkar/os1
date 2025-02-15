@@ -5,10 +5,11 @@
 #[macro_use]
 mod macros;
 
-mod memalloc;
+mod mem;
 mod multiboot;
 mod tui;
 
+use mem::allocator::Allocator;
 use multiboot::MultibootInfo;
 use tui::TerminalWriter;
 
@@ -18,7 +19,7 @@ use core::arch::global_asm;
 use core::panic::PanicInfo;
 
 #[global_allocator]
-static ALLOC: memalloc::Allocator = memalloc::Allocator::new();
+static ALLOC: Allocator = Allocator::new();
 
 global_asm!(include_str!("boot.s"));
 

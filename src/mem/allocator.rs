@@ -2,30 +2,11 @@ use core::alloc::{GlobalAlloc, Layout};
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::Relaxed;
 
+use crate::mem::segment::{
+    deallocate_segment, get_head_of_allocated_segment, AllocatedSegment, MemorySegment,
+};
 use crate::multiboot::MultibootInfo;
 use crate::{KERNEL_END_ADDR, KERNEL_START_ADDR};
-
-#[repr(C, packed)]
-struct MemorySegment {
-    size: usize,
-    next: *mut MemorySegment,
-}
-
-impl MemorySegment {
-    unsafe fn get_head(&self) -> *mut u8 {
-        (self as *const MemorySegment).add(1) as *mut u8
-    }
-
-    unsafe fn get_tail(&self) -> *mut u8 {
-        self.get_head().add(self.size)
-    }
-}
-
-#[allow(dead_code)]
-struct AllocatedSegment {
-    size: usize,
-    padding: [u8; 4],
-}
 
 pub struct Allocator {
     head: AtomicPtr<MemorySegment>,
@@ -138,7 +119,15 @@ unsafe impl GlobalAlloc for Allocator {
         panic!("Failed to allocate memory");
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        panic!("dealloc not implemented");
+    /// Custom deallocation function which deallocates a block of memory
+    /// at the given `ptr` address with the given `layout`.
+    ///
+    /// # Arguments
+    /// * `ptr` - The pointer to the block of memory currently allocated
+    /// * `layout` - The same layout as the one used to allocate the memory
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        let head_ptr = get_head_of_allocated_segment(ptr);
+
+        deallocate_segment(self.head.load(Relaxed), head_ptr);
     }
 }
