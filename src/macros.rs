@@ -3,35 +3,47 @@
 //! Utilises the `core::fmt::Write` trait
 
 #[macro_export]
-macro_rules! print {
+macro_rules! print_vga {
     ($($arg: tt)*) => {
         #[allow(invalid_reference_casting)]
         unsafe {
-            use $crate::tui::TerminalWriter;
+            use $crate::io::vga::TerminalWriter;
             use core::fmt::Write as FmtWrite;
-            let writer = &$crate::tui::TERMINAL as *const TerminalWriter;
-            let writer = writer as *mut TerminalWriter;
-            write!(&mut *(writer), $($arg)*).expect("failed to write to VGA buffer");
+
+            let vga_writer = &$crate::io::vga::TERMINAL as *const TerminalWriter;
+            let vga_writer = vga_writer as *mut TerminalWriter;
+            write!(&mut *(vga_writer), $($arg)*).expect("failed to write to VGA buffer");
         }
     };
 }
 
 #[macro_export]
-macro_rules! println {
+macro_rules! print_serial {
+    ($($arg: tt)*) => {
+        #[allow(invalid_reference_casting)]
+        unsafe {
+            use $crate::io::serial::Serial;
+            use core::fmt::Write as FmtWrite;
+
+            let serial_writer = &$crate::io::serial::SERIAL as *const Serial;
+            let serial_writer = serial_writer as *mut Serial;
+            write!(&mut *(serial_writer), $($arg)*).expect("failed to write to serial port");
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! println_vga {
     ($($arg: tt)*) => {{
-        print!($($arg)*);
-        print!("\n");
+        print_vga!($($arg)*);
+        print_vga!("\n");
     }};
 }
 
 #[macro_export]
-macro_rules! println_str {
-    ($fmt:expr, $ptr:expr) => {
-        let c_str = unsafe {
-            core::ffi::CStr::from_ptr($ptr as *const i8)
-                .to_str()
-                .expect("Invalid UTF-8 string")
-        };
-        println!($fmt, c_str);
-    };
+macro_rules! println_serial {
+    ($($arg: tt)*) => {{
+        print_serial!($($arg)*);
+        print_serial!("\n");
+    }};
 }

@@ -1,5 +1,5 @@
 //! Multiboot header and structures.
-//!  
+//!
 //! References:
 //! * <https://wiki.osdev.org/Multiboot>
 //! * <https://www.gnu.org/software/grub/manual/multiboot/multiboot.html>
@@ -27,6 +27,12 @@ pub struct MultibootInfo {
 }
 
 impl MultibootInfo {
+    pub unsafe fn get_name(&self) -> &str {
+        core::ffi::CStr::from_ptr(self.boot_loader_name as *const i8)
+            .to_str()
+            .expect("Invalid UTF-8 string")
+    }
+
     pub unsafe fn get_mmap_entries(&self) -> &[MultibootMmapEntry] {
         // Number of entries in the memory map
         let num_entries = (self.mmap_length as usize) / core::mem::size_of::<MultibootMmapEntry>();
@@ -36,8 +42,8 @@ impl MultibootInfo {
     }
 
     pub unsafe fn describe(&self) {
-        println!("Kernel start: {:?}", &KERNEL_START_ADDR as *const u32);
-        println!("Kernel end: {:?}", &KERNEL_END_ADDR as *const u32);
+        println_vga!("Kernel start: {:?}", &KERNEL_START_ADDR as *const u32);
+        println_vga!("Kernel end: {:?}", &KERNEL_END_ADDR as *const u32);
 
         let _entries = unsafe { self.get_mmap_entries() };
         let mut total_memory = 0;
@@ -54,10 +60,10 @@ impl MultibootInfo {
             let length = (*mmap_entry).length as f32 / 1024.0;
             let addr = (*mmap_entry).addr;
             total_memory += (*mmap_entry).length;
-            println!("* Memory: {length}K, Address: {addr:#X}",);
+            println_vga!("* Memory: {length}K, Address: {addr:#X}",);
         }
 
-        println!("Total memory: {}M", total_memory as f32 / 1024.0 / 1024.0);
+        println_vga!("Total memory: {}M", total_memory as f32 / 1024.0 / 1024.0);
     }
 }
 

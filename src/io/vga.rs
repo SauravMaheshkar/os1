@@ -1,6 +1,6 @@
-//! Text User Interface Module
+//! VGA Module
 //!
-//! This module provides a simple TUI.
+//! This module provides a simple interface to use VGA.
 //!
 //! # References
 //! * [Bare Bones - OSDev Wiki](https://wiki.osdev.org/Bare_Bones)

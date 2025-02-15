@@ -36,13 +36,13 @@ impl Allocator {
         let reserved_memory =
             (&KERNEL_END_ADDR as *const u32 as usize) - (&KERNEL_START_ADDR as *const u32 as usize);
 
-        println!("Reserved memory: {:#x}", reserved_memory);
+        println_vga!("Reserved memory: {:#x}", reserved_memory);
 
         // Calculate the block size
         let block_size =
             block.length as usize - reserved_memory - core::mem::size_of::<MemorySegment>();
 
-        println!("Block size: {:?}", block_size as f32 / 1024.0);
+        println_vga!("Block size: {:?}", block_size as f32 / 1024.0);
 
         // Determine the address of the segment
         let segment_addr = (&KERNEL_END_ADDR as *const u32 as usize) as *mut u8;

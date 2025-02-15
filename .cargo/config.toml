@@ -5,4 +5,4 @@ target = "targets/i686-unknown-none.json"
 build-std = ["core", "compiler_builtins", "alloc"]
 
 [target.'cfg(target_os = "none")']
-runner = "qemu-system-i386 -m 256M -kernel"
+runner = "qemu-system-i386 -m 256M -serial stdio -kernel"

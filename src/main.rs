@@ -5,13 +5,14 @@
 #[macro_use]
 mod macros;
 
+mod io;
 mod mem;
 mod multiboot;
-mod tui;
 
+use io::serial::Serial;
+use io::vga::TerminalWriter;
 use mem::allocator::Allocator;
 use multiboot::MultibootInfo;
-use tui::TerminalWriter;
 
 extern crate alloc;
 
@@ -36,20 +37,22 @@ pub unsafe extern "C" fn kernel_main(
     mulitboot_magic: u32,
     multiboot_info: *const MultibootInfo,
 ) -> i32 {
-    TerminalWriter::init();
     ALLOC.init(&*multiboot_info);
 
+    TerminalWriter::init();
+    Serial::init().expect("Error while initialising Serial Communication");
+
     // Canvas
-    let vec = alloc::vec![1];
-    println!("vec: {:?}", vec);
+    let vec = alloc::vec![1, 2, 3, 4, 5];
+    println_vga!("vec: {:?}", vec);
 
     // Multiboot(1)-compliant bootloaders report themselves
     // with magic number 0x2BADB002
     assert_eq!(mulitboot_magic, 0x2BADB002);
 
     // Print bootloader name
-    let boot_loader_name = (*multiboot_info).boot_loader_name;
-    println_str!("Using bootloader: {}", boot_loader_name);
+    let boot_loader_name = (*multiboot_info).get_name();
+    println_serial!("Using bootloader: {}", boot_loader_name);
 
     unsafe {
         (*multiboot_info).describe();
@@ -62,6 +65,6 @@ fn panic(_info: &PanicInfo) -> ! {
     // Print the message passed to `panic!`
     // Source:
     // * https://doc.rust-lang.org/beta/core/panic/struct.PanicInfo.html#method.message
-    println!("Panic: {}", _info.message());
+    println_vga!("Panic: {}", _info.message());
     loop {}
 }
