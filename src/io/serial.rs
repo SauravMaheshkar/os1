@@ -29,6 +29,21 @@ unsafe fn outb(addr: u16, val: u8) {
     );
 }
 
+/// Terminate QEMU from within kernel main
+///
+/// * exit port defined in `.cargo/config.toml`
+///
+/// # Example Invocation
+/// ```rust
+/// pub ... kernel_main (...) {
+/// io::serial::exit(0);
+/// }
+/// ```
+pub unsafe fn exit(code: u8) {
+    const EXIT_PORT: u16 = 0xf4;
+    outb(EXIT_PORT, code);
+}
+
 unsafe fn is_transit_empty() -> u8 {
     inb(PORT + 5) & 0x20
 }
@@ -49,8 +64,8 @@ impl Serial {
     pub unsafe fn init() -> Result<(), SerialInitError> {
         outb(PORT + 1, 0x00); // Disable all interrupts
         outb(PORT + 3, 0x80); // Enable DLAB (set baud rate divisor)
-        outb(PORT, 0x03); // Set divisor to 3 (lo byte) 38400 baud
-        outb(PORT + 1, 0x00); // (hi byte)
+        outb(PORT, 0x03); // Set divisor to 3 (low byte) 38400 baud
+        outb(PORT + 1, 0x00); // (high byte)
         outb(PORT + 3, 0x03); // 8 bits, no parity, one stop bit
         outb(PORT + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
         outb(PORT + 4, 0x0B); // IRQs enabled, RTS/DSR set

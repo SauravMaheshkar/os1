@@ -57,6 +57,8 @@ pub unsafe extern "C" fn kernel_main(
     unsafe {
         (*multiboot_info).describe();
     }
+
+    io::serial::exit(0);
     0
 }
 
