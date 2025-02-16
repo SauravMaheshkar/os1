@@ -131,3 +131,42 @@ unsafe impl GlobalAlloc for Allocator {
         deallocate_segment(self.head.load(Relaxed), head_ptr);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use core::sync::atomic::Ordering;
+
+    use crate::{mem::segment::MemorySegment, ALLOC};
+
+    fn get_state() -> [MemorySegment; 42] {
+        unsafe {
+            let mut state = [MemorySegment {
+                size: 0,
+                next: core::ptr::null_mut(),
+            }; 42];
+            let mut count = 0;
+            let mut iter = ALLOC.head.load(Ordering::Relaxed);
+
+            while !iter.is_null() {
+                state[count] = *iter;
+                count += 1;
+                iter = (*iter).next;
+            }
+
+            state
+        }
+    }
+
+    #[test_case]
+    pub fn test_alloc_state_changes() {
+        print_serial!("[TEST] Assert memory state changes after allocation ... ");
+        use alloc::boxed::Box;
+
+        let initial_state = get_state();
+        let _fill = Box::new(2);
+        let new_state = get_state();
+        assert_ne!(initial_state, new_state);
+
+        println_serial!("✓");
+    }
+}

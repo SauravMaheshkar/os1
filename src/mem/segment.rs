@@ -1,5 +1,6 @@
 /// Struct for a segment of memory.
 #[repr(C, packed)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MemorySegment {
     pub size: usize,
     pub next: *mut MemorySegment,
