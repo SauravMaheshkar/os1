@@ -43,7 +43,9 @@ pub struct AllocatedSegment {
 ///
 /// # Returns
 /// * mutable pointer (type [`AllocatedSegment`]) to the segment head
-pub unsafe fn get_head_of_allocated_segment(ptr: *mut u8) -> *mut AllocatedSegment {
+pub unsafe fn get_head_of_allocated_segment(
+    ptr: *mut u8,
+) -> *mut AllocatedSegment {
     let head = ptr.sub(core::mem::size_of::<AllocatedSegment>());
     head as *mut AllocatedSegment
 }
@@ -53,7 +55,10 @@ pub unsafe fn get_head_of_allocated_segment(ptr: *mut u8) -> *mut AllocatedSegme
 /// # Arguments
 /// * `head` - pointer to a free segment of a memory. Check usage in allocator.
 /// * `head_ptr` - pointer to a allocated segment.
-pub unsafe fn deallocate_segment(head: *mut MemorySegment, head_ptr: *mut AllocatedSegment) {
+pub unsafe fn deallocate_segment(
+    head: *mut MemorySegment,
+    head_ptr: *mut AllocatedSegment,
+) {
     let segment_size = (*head_ptr).size;
     let segment = head_ptr as *mut MemorySegment;
 
@@ -83,7 +88,10 @@ pub unsafe fn deallocate_segment(head: *mut MemorySegment, head_ptr: *mut Alloca
     panic!("Failed to deallocate segment!");
 }
 
-unsafe fn merge_segments(segment_a: *mut MemorySegment, segment_b: *mut MemorySegment) {
+unsafe fn merge_segments(
+    segment_a: *mut MemorySegment,
+    segment_b: *mut MemorySegment,
+) {
     if (*segment_a).get_tail() == segment_b as *mut u8 {
         (*segment_a).set_tail((*segment_b).get_tail());
         (*segment_a).next = (*segment_b).next;

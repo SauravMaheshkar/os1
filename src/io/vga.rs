@@ -5,10 +5,9 @@
 //! # References
 //! * [Bare Bones - OSDev Wiki](https://wiki.osdev.org/Bare_Bones)
 
-use core::sync::atomic::Ordering::Relaxed;
 use core::{
     fmt::Write,
-    sync::atomic::{AtomicU8, AtomicUsize},
+    sync::atomic::{AtomicU8, AtomicUsize, Ordering::Relaxed},
 };
 
 pub static TERMINAL: TerminalWriter = TerminalWriter::new();
@@ -78,7 +77,10 @@ impl TerminalWriter {
     /// * Default `vga_width` is 80.
     const fn new() -> TerminalWriter {
         let cursor = AtomicUsize::new(0);
-        let color = AtomicU8::new(vga_entry_color(VgaColor::LightGray, VgaColor::Black));
+        let color = AtomicU8::new(vga_entry_color(
+            VgaColor::LightGray,
+            VgaColor::Black,
+        ));
         let buffer = 0xb8000 as *mut u16;
 
         TerminalWriter {

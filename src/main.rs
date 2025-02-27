@@ -13,15 +13,13 @@ mod multiboot;
 #[cfg(test)]
 mod testing;
 
-use io::serial::Serial;
-use io::vga::TerminalWriter;
+use io::{serial::Serial, vga::TerminalWriter};
 use mem::allocator::Allocator;
 use multiboot::MultibootInfo;
 
 extern crate alloc;
 
-use core::arch::global_asm;
-use core::panic::PanicInfo;
+use core::{arch::global_asm, panic::PanicInfo};
 
 #[global_allocator]
 static ALLOC: Allocator = Allocator::new();
@@ -46,15 +44,21 @@ pub unsafe extern "C" fn kernel_main(
 
     ALLOC.init(&*multiboot_info);
 
-    // Canvas
-    let vec = alloc::vec![1, 2, 3, 4, 5];
-    println_vga!("vec: {:?}", vec);
-
     #[cfg(test)]
     {
         test_main();
         io::serial::exit(0);
     }
+
+    let mut port_handler = io::PortHandler::new();
+
+    let mut rtc =
+        io::rtc::Rtc::new(&mut port_handler).expect("Failed to initialise RTC");
+    println_serial!("RTC: {:?}", rtc.get());
+
+    // Canvas
+    let vec = alloc::vec![1, 2, 3, 4, 5];
+    println_vga!("vec: {:?}", vec);
 
     // Multiboot(1)-compliant bootloaders report themselves
     // with magic number 0x2BADB002

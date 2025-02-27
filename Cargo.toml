@@ -12,3 +12,5 @@ name = "os1"
 bench = false
 
 [dependencies]
+hashbrown = "0.15"
+thiserror-no-std = "2.0.2"

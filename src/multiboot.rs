@@ -35,10 +35,14 @@ impl MultibootInfo {
 
     pub unsafe fn get_mmap_entries(&self) -> &[MultibootMmapEntry] {
         // Number of entries in the memory map
-        let num_entries = (self.mmap_length as usize) / core::mem::size_of::<MultibootMmapEntry>();
+        let num_entries = (self.mmap_length as usize)
+            / core::mem::size_of::<MultibootMmapEntry>();
 
         // Return a slice of the memory map entries
-        core::slice::from_raw_parts(self.mmap_addr as *const MultibootMmapEntry, num_entries)
+        core::slice::from_raw_parts(
+            self.mmap_addr as *const MultibootMmapEntry,
+            num_entries,
+        )
     }
 
     pub unsafe fn describe(&self) {
@@ -63,7 +67,10 @@ impl MultibootInfo {
             println_vga!("* Memory: {length}K, Address: {addr:#X}",);
         }
 
-        println_vga!("Total memory: {}M", total_memory as f32 / 1024.0 / 1024.0);
+        println_vga!(
+            "Total memory: {}M",
+            total_memory as f32 / 1024.0 / 1024.0
+        );
     }
 }
 

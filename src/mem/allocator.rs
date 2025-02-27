@@ -1,12 +1,16 @@
-use core::alloc::{GlobalAlloc, Layout};
-use core::sync::atomic::AtomicPtr;
-use core::sync::atomic::Ordering::Relaxed;
-
-use crate::mem::segment::{
-    deallocate_segment, get_head_of_allocated_segment, AllocatedSegment, MemorySegment,
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    sync::atomic::{AtomicPtr, Ordering::Relaxed},
 };
-use crate::multiboot::MultibootInfo;
-use crate::{KERNEL_END_ADDR, KERNEL_START_ADDR};
+
+use crate::{
+    mem::segment::{
+        deallocate_segment, get_head_of_allocated_segment, AllocatedSegment,
+        MemorySegment,
+    },
+    multiboot::MultibootInfo,
+    KERNEL_END_ADDR, KERNEL_START_ADDR,
+};
 
 pub struct Allocator {
     head: AtomicPtr<MemorySegment>,
@@ -33,14 +37,15 @@ impl Allocator {
             .expect("failed to find kernel start address");
 
         // Calculate the reserved memory
-        let reserved_memory =
-            (&KERNEL_END_ADDR as *const u32 as usize) - (&KERNEL_START_ADDR as *const u32 as usize);
+        let reserved_memory = (&KERNEL_END_ADDR as *const u32 as usize)
+            - (&KERNEL_START_ADDR as *const u32 as usize);
 
         println_vga!("Reserved memory: {:#x}", reserved_memory);
 
         // Calculate the block size
-        let block_size =
-            block.length as usize - reserved_memory - core::mem::size_of::<MemorySegment>();
+        let block_size = block.length as usize
+            - reserved_memory
+            - core::mem::size_of::<MemorySegment>();
 
         println_vga!("Block size: {:?}", block_size as f32 / 1024.0);
 
@@ -49,12 +54,14 @@ impl Allocator {
 
         // Align the segment address to the alignment of MemorySegment
         let alignment = core::mem::align_of::<MemorySegment>();
-        let aligned_addr = (segment_addr as usize + alignment - 1) & !(alignment - 1);
+        let aligned_addr =
+            (segment_addr as usize + alignment - 1) & !(alignment - 1);
         let aligned_segment_addr = aligned_addr as *mut MemorySegment;
 
         // Ensure the address is properly aligned for MemorySegment
         assert_eq!(
-            aligned_segment_addr as usize % core::mem::align_of::<MemorySegment>(),
+            aligned_segment_addr as usize
+                % core::mem::align_of::<MemorySegment>(),
             0,
             "Memory segment address must be properly aligned"
         );
@@ -70,7 +77,10 @@ impl Allocator {
     }
 }
 
-unsafe fn get_metadata(memory_segment: &MemorySegment, layout: &Layout) -> Option<*mut u8> {
+unsafe fn get_metadata(
+    memory_segment: &MemorySegment,
+    layout: &Layout,
+) -> Option<*mut u8> {
     let head = memory_segment.get_head();
     let tail = memory_segment.get_tail();
 
@@ -159,7 +169,9 @@ mod test {
 
     #[test_case]
     pub fn test_alloc_state_changes() {
-        print_serial!("[TEST] Assert memory state changes after allocation ... ");
+        print_serial!(
+            "[TEST] Assert memory state changes after allocation ... "
+        );
         use alloc::boxed::Box;
 
         let initial_state = get_state();
