@@ -11,5 +11,4 @@ cargo build && cargo run
 
 * [Bare Bones - OSDev Wiki](https://wiki.osdev.org/Bare_Bones)
 * [Writing an OS in Rust](https://os.phil-opp.com/)
-* [Parsing info from bootloader in rust kernel](https://youtu.be/WBDjsYnhaKI?si=assktV4N5RSkD8Y-)
-* [Stackoverflow | How to compile Rust code to bare metal 32 bit x86 (i686) code? What compile target should I use?](https://stackoverflow.com/a/67902310/14081966)
+* [Writing an operating system](https://youtube.com/playlist?list=PL980gcR1LE3LBuWuSv2CL28HsfnpC4Qf7&si=ychOZDandztTEfA4)
