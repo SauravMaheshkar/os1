@@ -25,6 +25,26 @@ impl BitManipulation for u64 {
     }
 }
 
+// Implement the trait for u16
+impl BitManipulation for u16 {
+    fn set_bits(&mut self, shift: u16, length: u16, val: u16) {
+        let mut mask = (1 << length) - 1;
+        mask <<= shift;
+
+        *self &= !mask; // Clear the bits in the specified range
+        *self |= (val << shift) & mask; // Set the bits to the new value
+    }
+
+    fn set_bit(&mut self, shift: u16, enable: bool) {
+        self.set_bits(shift, 1, enable as u16);
+    }
+
+    fn get_bits(&self, shift: u16, length: u16) -> u16 {
+        let mask = (1 << length) - 1;
+        (*self >> shift) & mask
+    }
+}
+
 impl BitManipulation for u8 {
     fn set_bits(&mut self, shift: u8, length: u8, val: u8) {
         let mut mask = (1 << length) - 1;

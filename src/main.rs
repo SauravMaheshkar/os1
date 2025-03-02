@@ -2,6 +2,7 @@
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
+#![feature(abi_x86_interrupt)]
 #![test_runner(testing::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
@@ -44,20 +45,17 @@ pub unsafe extern "C" fn kernel_main(
 ) -> i32 {
     TerminalWriter::init();
     Serial::init().expect("Error while initialising Serial Communication");
-
     ALLOC.init(&*multiboot_info);
+    let mut port_handler = io::PortHandler::new();
 
     interrupts::gdt::init();
-    println_serial!("Updated gdt");
-    interrupts::gdt::print_gdt();
+    interrupts::idt::init(&mut port_handler);
 
     #[cfg(test)]
     {
         test_main();
         io::serial::exit(0);
     }
-
-    let mut port_handler = io::PortHandler::new();
 
     let mut rtc =
         io::rtc::Rtc::new(&mut port_handler).expect("Failed to initialise RTC");
@@ -79,7 +77,7 @@ pub unsafe extern "C" fn kernel_main(
         (*multiboot_info).describe();
     }
 
-    // io::serial::exit(0);
+    io::serial::exit(0);
     0
 }
 

@@ -159,12 +159,14 @@ pub fn sgdt() -> GDT {
     }
 }
 
+#[allow(dead_code)]
 pub unsafe fn print_gdt() {
     let gdt = sgdt();
 
     let limit = gdt.limit + 1;
     let base = gdt.base as *const SegmentDescriptor;
 
+    println_serial!("GDT: ");
     println_serial!("base: {base:?}, limit: {limit:#x}");
     for i in 0..(limit / 8) {
         println_serial!("Segment {i}");
