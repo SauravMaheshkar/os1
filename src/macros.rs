@@ -1,4 +1,4 @@
-//! Custom Macros to write to the VGA buffer
+//! Custom Macros
 //!
 //! Utilises the `core::fmt::Write` trait
 

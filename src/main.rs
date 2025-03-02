@@ -1,6 +1,7 @@
 #![allow(bad_asm_style)]
 #![no_std]
 #![no_main]
+#![feature(maybe_uninit_uninit_array)]
 #![feature(custom_test_frameworks)]
 #![feature(abi_x86_interrupt)]
 #![test_runner(testing::test_runner)]
@@ -8,6 +9,8 @@
 
 #[macro_use]
 mod macros;
+#[macro_use]
+mod logger;
 mod interrupts;
 mod io;
 mod mem;
@@ -45,11 +48,18 @@ pub unsafe extern "C" fn kernel_main(
 ) -> i32 {
     TerminalWriter::init();
     Serial::init().expect("Error while initialising Serial Communication");
+
     ALLOC.init(&*multiboot_info);
+
     let mut port_handler = io::PortHandler::new();
 
     interrupts::gdt::init();
     interrupts::idt::init(&mut port_handler);
+    logger::init(Default::default());
+
+    unsafe {
+        core::arch::asm!("int $13");
+    }
 
     #[cfg(test)]
     {
@@ -62,8 +72,7 @@ pub unsafe extern "C" fn kernel_main(
     println_serial!("RTC: {:?}", rtc.get());
 
     // Canvas
-    let vec = alloc::vec![1, 2, 3, 4, 5];
-    println_vga!("vec: {:?}", vec);
+    info!("vec: {:?}", alloc::vec![1, 2, 3, 4, 5]);
 
     // Multiboot(1)-compliant bootloaders report themselves
     // with magic number 0x2BADB002
@@ -71,12 +80,13 @@ pub unsafe extern "C" fn kernel_main(
 
     // Print bootloader name
     let boot_loader_name = (*multiboot_info).get_name();
-    println_serial!("Using bootloader: {}", boot_loader_name);
+    info!("Using bootloader: {}", boot_loader_name);
 
     unsafe {
         (*multiboot_info).describe();
     }
 
+    logger::service();
     io::serial::exit(0);
     0
 }

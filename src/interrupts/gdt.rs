@@ -166,13 +166,13 @@ pub unsafe fn print_gdt() {
     let limit = gdt.limit + 1;
     let base = gdt.base as *const SegmentDescriptor;
 
-    println_serial!("GDT: ");
-    println_serial!("base: {base:?}, limit: {limit:#x}");
+    debug!("GDT: ");
+    debug!("base: {base:?}, limit: {limit:#x}");
     for i in 0..(limit / 8) {
-        println_serial!("Segment {i}");
+        debug!("Segment {i}");
         let segment = *base.add(i.into());
 
-        println_serial!(
+        debug!(
             "base: {:#x}, limit: {:#x}, access: {:#x}, flags: {:#x}",
             segment.get_base(),
             segment.get_limit(),

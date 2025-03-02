@@ -69,6 +69,7 @@ pub struct IDT {
     offset: u32,
 }
 
+#[allow(dead_code)]
 pub fn sidt() -> IDT {
     let mut ret = core::mem::MaybeUninit::uninit();
 
@@ -118,12 +119,9 @@ pub fn init(port_handler: &mut PortHandler) {
             r#"
             lidt ({idt})
             sti
-            int $13
             "#,
             idt = in(reg) &idt,
             options(att_syntax)
         );
     }
-
-    println_serial!("{:?}", sidt());
 }

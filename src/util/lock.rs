@@ -29,11 +29,13 @@ impl<'a, T> DerefMut for Guard<'a, T> {
     }
 }
 
+#[allow(dead_code)]
 pub struct Lock<T> {
     data: UnsafeCell<T>,
     free: AtomicBool,
 }
 
+#[allow(dead_code)]
 impl<T> Lock<T> {
     pub const fn new(data: T) -> Lock<T> {
         Self {
