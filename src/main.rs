@@ -7,9 +7,12 @@
 
 #[macro_use]
 mod macros;
+mod interrupts;
 mod io;
 mod mem;
 mod multiboot;
+mod util;
+
 #[cfg(test)]
 mod testing;
 
@@ -43,6 +46,10 @@ pub unsafe extern "C" fn kernel_main(
     Serial::init().expect("Error while initialising Serial Communication");
 
     ALLOC.init(&*multiboot_info);
+
+    interrupts::gdt::init();
+    println_serial!("Updated gdt");
+    interrupts::gdt::print_gdt();
 
     #[cfg(test)]
     {
