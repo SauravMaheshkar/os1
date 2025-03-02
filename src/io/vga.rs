@@ -5,12 +5,7 @@
 //! # References
 //! * [Bare Bones - OSDev Wiki](https://wiki.osdev.org/Bare_Bones)
 
-use core::{
-    fmt::Write,
-    sync::atomic::{AtomicU8, AtomicUsize, Ordering::Relaxed},
-};
-
-pub static TERMINAL: TerminalWriter = TerminalWriter::new();
+use core::fmt::Write;
 
 const VGA_HEIGHT: usize = 25;
 const VGA_WIDTH: usize = 80;
@@ -64,8 +59,8 @@ const fn vga_entry(uc: u8, color: u8) -> u16 {
 
 /// The Terminal Writer is responsible for writing to the VGA buffer.
 pub struct TerminalWriter {
-    cursor: AtomicUsize,
-    color: AtomicU8,
+    cursor: usize,
+    color: u8,
     buffer: *mut u16,
 }
 
@@ -75,35 +70,25 @@ impl TerminalWriter {
     /// * Default color is `LightGray` on `Black`.
     /// * Default `vga_height` is 25.
     /// * Default `vga_width` is 80.
-    const fn new() -> TerminalWriter {
-        let cursor = AtomicUsize::new(0);
-        let color = AtomicU8::new(vga_entry_color(
-            VgaColor::LightGray,
-            VgaColor::Black,
-        ));
+    pub fn new() -> TerminalWriter {
+        let cursor = 0;
+        let color = vga_entry_color(VgaColor::LightGray, VgaColor::Black);
         let buffer = 0xb8000 as *mut u16;
+
+        for y in 0..VGA_HEIGHT {
+            for x in 0..VGA_WIDTH {
+                let index = y * VGA_WIDTH + x;
+                unsafe {
+                    *buffer.add(index) = vga_entry(b' ', color);
+                }
+            }
+        }
 
         TerminalWriter {
             cursor,
             color,
             buffer,
         }
-    }
-
-    pub fn init() -> &'static TerminalWriter {
-        let color = TERMINAL.color.load(Relaxed);
-
-        // Fill the VGA buffer with spaces
-        for y in 0..VGA_HEIGHT {
-            for x in 0..VGA_WIDTH {
-                let index = y * VGA_WIDTH + x;
-                unsafe {
-                    *TERMINAL.buffer.add(index) = vga_entry(b' ', color);
-                }
-            }
-        }
-
-        &TERMINAL
     }
 
     /// Write a string to the VGA buffer.
@@ -123,17 +108,14 @@ impl TerminalWriter {
     fn putchar(&mut self, c: u8) {
         // newline
         if c == b'\n' {
-            let mut cursor = self.cursor.load(Relaxed);
-            cursor += VGA_WIDTH - (cursor % VGA_WIDTH);
-            self.cursor.store(cursor, Relaxed);
+            self.cursor += VGA_WIDTH - (self.cursor % VGA_WIDTH);
             return;
         }
 
-        let color = self.color.load(Relaxed);
-        let cursor = self.cursor.fetch_add(1, Relaxed);
-
         unsafe {
-            *self.buffer.add(cursor) = vga_entry(c, color);
+            *self.buffer.add(self.cursor) = vga_entry(c, self.color);
+            self.cursor += 1;
+            self.cursor %= VGA_WIDTH * VGA_HEIGHT;
         }
     }
 }

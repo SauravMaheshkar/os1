@@ -20,7 +20,6 @@ mod util;
 #[cfg(test)]
 mod testing;
 
-use io::{serial::Serial, vga::TerminalWriter};
 use mem::allocator::Allocator;
 use multiboot::MultibootInfo;
 
@@ -46,25 +45,28 @@ pub unsafe extern "C" fn kernel_main(
     mulitboot_magic: u32,
     multiboot_info: *const MultibootInfo,
 ) -> i32 {
-    TerminalWriter::init();
-    Serial::init().expect("Error while initialising Serial Communication");
+    let interrupt_guard = interrupts::guard::InterruptLock::new(());
+    let interrupt_guard = interrupt_guard.lock();
 
     ALLOC.init(&*multiboot_info);
-
-    let mut port_handler = io::PortHandler::new();
-
-    interrupts::gdt::init();
-    interrupts::idt::init(&mut port_handler);
     logger::init(Default::default());
 
-    unsafe {
-        core::arch::asm!("int $13");
-    }
+    let mut port_handler = io::PortHandler::new();
+    io::init_io_ports(&mut port_handler);
+    io::init_io_exit(&mut port_handler);
 
     #[cfg(test)]
     {
         test_main();
-        io::serial::exit(0);
+        io::exit(0);
+    }
+
+    interrupts::gdt::init();
+    interrupts::idt::init(&mut port_handler);
+    drop(interrupt_guard);
+
+    unsafe {
+        core::arch::asm!("int $13");
     }
 
     let mut rtc =
@@ -72,7 +74,7 @@ pub unsafe extern "C" fn kernel_main(
     println_serial!("RTC: {:?}", rtc.get());
 
     // Canvas
-    info!("vec: {:?}", alloc::vec![1, 2, 3, 4, 5]);
+    println_serial!("vec: {:?}", alloc::vec![1, 2, 3, 4, 5]);
 
     // Multiboot(1)-compliant bootloaders report themselves
     // with magic number 0x2BADB002
@@ -82,21 +84,24 @@ pub unsafe extern "C" fn kernel_main(
     let boot_loader_name = (*multiboot_info).get_name();
     info!("Using bootloader: {}", boot_loader_name);
 
-    unsafe {
-        (*multiboot_info).describe();
-    }
+    // Print memory map
+    // unsafe {
+    //     (*multiboot_info).describe();
+    // }
 
     logger::service();
-    io::serial::exit(0);
+    io::exit(0);
     0
 }
 
 #[panic_handler]
-unsafe fn panic(_info: &PanicInfo) -> ! {
+fn panic(_info: &PanicInfo) -> ! {
     // Print the message passed to `panic!`
     // Source:
     // * https://doc.rust-lang.org/beta/core/panic/struct.PanicInfo.html#method.message
     println_vga!("Panic: {}", _info.message());
-    io::serial::exit(1);
+    unsafe {
+        io::exit(1);
+    }
     loop {}
 }

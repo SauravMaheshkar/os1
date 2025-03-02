@@ -118,8 +118,9 @@ pub struct Logger {
     logs: InterruptLock<CircularBuffer<Log, 1024>>,
 }
 
+#[allow(dead_code)]
 impl Logger {
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Logger {
             verbose: InterruptLock::new(None),
             logs: InterruptLock::new(CircularBuffer::new()),
@@ -153,6 +154,7 @@ pub fn init(verbose: HashMap<String, Verbosity>) {
     *LOGGER.verbose.lock() = Some(verbose);
 }
 
+#[allow(dead_code)]
 pub fn service() {
     LOGGER.service()
 }

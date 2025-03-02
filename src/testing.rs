@@ -5,6 +5,6 @@ pub fn test_runner(tests: &[&dyn Fn()]) {
         test_fn();
     }
     unsafe {
-        crate::io::serial::exit(0);
+        crate::io::exit(0);
     }
 }

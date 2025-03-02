@@ -1,95 +1,118 @@
 //! # Serial Communication
 //!
 //! * Ref: https://wiki.osdev.org/Serial_Ports
-use core::arch::asm;
+use thiserror_no_std::Error;
 
-const PORT: u16 = 0x3f8;
+use crate::io::{Port, PortHandler};
 
-unsafe fn inb(addr: u16) -> u8 {
-    let mut ret;
+const SERIAL_PORT: u16 = 0x3f8;
 
-    asm!(r#"
-        .att_syntax
-        in %dx, %al
-        "#,
-        in("dx") addr,
-        out("al") ret
-    );
-
-    ret
+#[derive(Debug, Error)]
+pub enum SerialInitError {
+    #[error("data port reserved")]
+    DataReserved,
+    #[error("enable interrupt port reserved")]
+    EnableInterruptReserved,
+    #[error("interrupt id port reserved")]
+    InterruptIdReserved,
+    #[error("line control port reserved")]
+    LineControlReserved,
+    #[error("modem control port reserved")]
+    ModemControlReserved,
+    #[error("line status port reserved")]
+    LineStatusReserved,
+    #[error("modem status port reserved")]
+    ModemStatusReserved,
+    #[error("scratch port reserved")]
+    ScratchReserved,
+    #[error("loopback test failed")]
+    Loopback,
 }
 
-unsafe fn outb(addr: u16, val: u8) {
-    asm!(r#"
-        .att_syntax
-        out %al, %dx
-        "#,
-        in("dx") addr,
-        in("al") val
-    );
+pub struct Serial {
+    data: Port,
+    _enable_interrupt: Port,
+    _interrupt_id_fifo_control: Port,
+    _line_control: Port,
+    _modem_control: Port,
+    line_status: Port,
+    _modem_status: Port,
+    _scratch: Port,
 }
-
-/// Terminate QEMU from within kernel main
-///
-/// * exit port defined in `.cargo/qemu_wrapper.sh`
-///
-/// # Example Invocation
-/// ```rust
-/// pub ... kernel_main (...) {
-/// io::serial::exit(0);
-/// }
-/// ```
-pub unsafe fn exit(code: u8) {
-    const EXIT_PORT: u16 = 0xf4;
-    outb(EXIT_PORT, code);
-}
-
-unsafe fn is_transit_empty() -> u8 {
-    inb(PORT + 5) & 0x20
-}
-
-unsafe fn write_serial(a: u8) {
-    while is_transit_empty() == 0 {}
-    outb(PORT, a);
-}
-
-pub struct Serial {}
-
-pub static SERIAL: Serial = Serial {};
-
-#[derive(Debug)]
-pub struct SerialInitError;
 
 impl Serial {
-    pub unsafe fn init() -> Result<(), SerialInitError> {
-        outb(PORT + 1, 0x00); // Disable all interrupts
-        outb(PORT + 3, 0x80); // Enable DLAB (set baud rate divisor)
-        outb(PORT, 0x03); // Set divisor to 3 (low byte) 38400 baud
-        outb(PORT + 1, 0x00); // (high byte)
-        outb(PORT + 3, 0x03); // 8 bits, no parity, one stop bit
-        outb(PORT + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
-        outb(PORT + 4, 0x0B); // IRQs enabled, RTS/DSR set
-        outb(PORT + 4, 0x1E); // Set in loopback mode, test the serial chip
-        outb(PORT, 0xAE); // Test serial chip (send byte 0xAE and check if serial returns same
-                          // byte)
+    pub fn new(
+        port_handler: &mut PortHandler,
+    ) -> Result<Serial, SerialInitError> {
+        let mut data = port_handler
+            .add(SERIAL_PORT)
+            .ok_or(SerialInitError::DataReserved)?;
+        let mut enable_interrupt = port_handler
+            .add(SERIAL_PORT + 1)
+            .ok_or(SerialInitError::EnableInterruptReserved)?;
+        let mut interrupt_id_fifo_control =
+            port_handler
+                .add(SERIAL_PORT + 2)
+                .ok_or(SerialInitError::InterruptIdReserved)?;
+        let mut line_control = port_handler
+            .add(SERIAL_PORT + 3)
+            .ok_or(SerialInitError::LineControlReserved)?;
+        let mut modem_control = port_handler
+            .add(SERIAL_PORT + 4)
+            .ok_or(SerialInitError::ModemControlReserved)?;
+        let line_status = port_handler
+            .add(SERIAL_PORT + 5)
+            .ok_or(SerialInitError::LineStatusReserved)?;
+        let modem_status = port_handler
+            .add(SERIAL_PORT + 6)
+            .ok_or(SerialInitError::ModemStatusReserved)?;
+        let scratch = port_handler
+            .add(SERIAL_PORT + 7)
+            .ok_or(SerialInitError::ScratchReserved)?;
 
-        // Check if serial is faulty (i.e: not same byte as sent)
-        if inb(PORT) != 0xAE {
-            return Err(SerialInitError);
+        enable_interrupt.writeb(0x00);
+        line_control.writeb(0x80);
+        data.writeb(0x03);
+        enable_interrupt.writeb(0x00);
+        line_control.writeb(0x03);
+        interrupt_id_fifo_control.writeb(0xC7);
+        modem_control.writeb(0x0B);
+        modem_control.writeb(0x1E);
+        data.writeb(0xAE);
+
+        if data.readb() != 0xAE {
+            return Err(SerialInitError::Loopback);
         }
 
-        outb(PORT + 4, 0x0F);
+        modem_control.writeb(0x0F);
 
-        Ok(())
+        Ok(Serial {
+            data,
+            _enable_interrupt: enable_interrupt,
+            _interrupt_id_fifo_control: interrupt_id_fifo_control,
+            _line_control: line_control,
+            _modem_control: modem_control,
+            line_status,
+            _modem_status: modem_status,
+            _scratch: scratch,
+        })
+    }
+
+    fn is_transmit_empty(&mut self) -> u8 {
+        self.line_status.readb() & 0x20
+    }
+
+    fn write_byte(&mut self, a: u8) {
+        while self.is_transmit_empty() == 0 {}
+
+        self.data.writeb(a);
     }
 }
 
 impl core::fmt::Write for Serial {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        unsafe {
-            for b in s.as_bytes() {
-                write_serial(*b);
-            }
+        for b in s.as_bytes() {
+            self.write_byte(*b)
         }
         Ok(())
     }

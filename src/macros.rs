@@ -5,14 +5,13 @@
 #[macro_export]
 macro_rules! print_vga {
     ($($arg: tt)*) => {
-        #[allow(invalid_reference_casting)]
+        #[allow(unused_unsafe)]
         unsafe {
-            use $crate::io::vga::TerminalWriter;
             use core::fmt::Write as FmtWrite;
-
-            let vga_writer = &$crate::io::vga::TERMINAL as *const TerminalWriter;
-            let vga_writer = vga_writer as *mut TerminalWriter;
-            write!(&mut *(vga_writer), $($arg)*).expect("failed to write to VGA buffer");
+            let mut sinks = $crate::io::SINKS.borrow_mut();
+            if let Some(vga) = &mut sinks.vga {
+                write!(vga, $($arg)*).expect("Failed to print to vga");
+            }
         }
     };
 }
@@ -20,14 +19,13 @@ macro_rules! print_vga {
 #[macro_export]
 macro_rules! print_serial {
     ($($arg: tt)*) => {
-        #[allow(invalid_reference_casting)]
+        #[allow(unused_unsafe)]
         unsafe {
-            use $crate::io::serial::Serial;
             use core::fmt::Write as FmtWrite;
-
-            let serial_writer = &$crate::io::serial::SERIAL as *const Serial;
-            let serial_writer = serial_writer as *mut Serial;
-            write!(&mut *(serial_writer), $($arg)*).expect("failed to write to serial port");
+            let mut sinks = $crate::io::SINKS.borrow_mut();
+            if let Some(serial) = &mut sinks.serial {
+                write!(serial, $($arg)*).expect("Failed to print to serial");
+            }
         }
     };
 }
