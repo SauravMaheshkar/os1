@@ -1,12 +1,33 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
+#![feature(abi_x86_interrupt)]
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+extern crate alloc;
+
 use core::panic::PanicInfo;
 
+pub mod interrupts;
 pub mod io;
+pub mod mem;
+
+pub fn init() {
+    interrupts::gdt::init_gdt();
+    interrupts::idt::init_idt();
+    unsafe {
+        interrupts::pic::PICS.lock().initialize();
+    }
+
+    x86_64::instructions::interrupts::enable();
+}
+
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
 
 pub trait Testable {
     fn run(&self) -> ();
@@ -35,15 +56,20 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     crate::println_serial!("x\n");
     crate::println_serial!("Error: {}\n", info);
     crate::io::exit_qemu(crate::io::QemuExitCode::Failed);
-    loop {}
+    hlt_loop();
 }
 
-/// Entry point for `cargo xtest`
 #[cfg(test)]
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+use bootloader::{entry_point, BootInfo};
+
+#[cfg(test)]
+entry_point!(test_kernel_main);
+
+#[cfg(test)]
+fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
+    init();
     test_main();
-    loop {}
+    hlt_loop();
 }
 
 #[cfg(test)]

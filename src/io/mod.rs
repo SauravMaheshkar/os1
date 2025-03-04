@@ -1,5 +1,4 @@
 //! # I/O and Communication
-// pub mod rtc;
 pub mod serial;
 pub mod vga;
 
