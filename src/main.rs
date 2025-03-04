@@ -20,15 +20,14 @@ mod util;
 #[cfg(test)]
 mod testing;
 
-use mem::allocator::Allocator;
 use multiboot::MultibootInfo;
 
 extern crate alloc;
 
 use core::{arch::global_asm, panic::PanicInfo};
 
-#[global_allocator]
-static ALLOC: Allocator = Allocator::new();
+// #[global_allocator]
+// pub static ALLOC: Allocator = Allocator::new();
 
 global_asm!(include_str!("boot.s"));
 
@@ -48,7 +47,8 @@ pub unsafe extern "C" fn kernel_main(
     let interrupt_guard = interrupts::guard::InterruptLock::new(());
     let interrupt_guard = interrupt_guard.lock();
 
-    ALLOC.init(&*multiboot_info);
+    // interrupts::idt::init();
+
     logger::init(Default::default());
 
     let mut port_handler = io::PortHandler::new();
@@ -62,12 +62,12 @@ pub unsafe extern "C" fn kernel_main(
     }
 
     interrupts::gdt::init();
-    interrupts::idt::init(&mut port_handler);
+    // interrupts::idt::init(&mut port_handler);
     drop(interrupt_guard);
 
-    unsafe {
-        core::arch::asm!("int $13");
-    }
+    // unsafe {
+    // core::arch::asm!("int $13");
+    // }
 
     let mut rtc =
         io::rtc::Rtc::new(&mut port_handler).expect("Failed to initialise RTC");
@@ -80,26 +80,30 @@ pub unsafe extern "C" fn kernel_main(
     // with magic number 0x2BADB002
     assert_eq!(mulitboot_magic, 0x2BADB002);
 
+    info!("Test 1");
+    info!("Test 2");
+
     // Print bootloader name
     let boot_loader_name = (*multiboot_info).get_name();
-    info!("Using bootloader: {}", boot_loader_name);
+    println_serial!("Using bootloader: {}", boot_loader_name);
+    // info!("Using bootloader: {:?}", boot_loader_name);
 
     // Print memory map
     // unsafe {
     //     (*multiboot_info).describe();
     // }
 
-    logger::service();
+    logger::trigger();
     io::exit(0);
     0
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
     // Print the message passed to `panic!`
     // Source:
     // * https://doc.rust-lang.org/beta/core/panic/struct.PanicInfo.html#method.message
-    println_vga!("Panic: {}", _info.message());
+    println_serial!("[PANIC]: {}", info.message());
     unsafe {
         io::exit(1);
     }

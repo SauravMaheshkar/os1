@@ -1,4 +1,4 @@
-use alloc::{borrow::Cow, string::String};
+use alloc::string::String;
 
 use hashbrown::HashMap;
 
@@ -8,28 +8,24 @@ use crate::{
 
 #[allow(unused_macros)]
 macro_rules! log {
-    ($verbosity: expr, $s: expr) => {
-        if $crate::logger::LOGGER.get_verbosity(module_path!()) <= $verbosity {
-            let log = $crate::logger::Log {
-                file: file!(),
-                line: line!(),
-                verbosity: $verbosity,
-                message: $s.into()
-            };
-            $crate::logger::LOGGER.push_log(log);
-        }
-    };
     ($verbosity: expr, $s: expr $(, $args: expr)*) => {
         if $crate::logger::LOGGER.get_verbosity(module_path!()) <= $verbosity {
-            let log = $crate::logger::Log {
-                file: file!(),
-                line: line!(),
-                verbosity: $verbosity,
-                message: alloc::format!($s $(, $args)*).into()
-            };
-            $crate::logger::LOGGER.push_log(log);
+                // print_serial!("[{}] {}:{} {}", $verbosity, file!(), line!(), $s);
+                // println_serial!($s $(, $args)*);
+
+                let log = $crate::logger::Log {
+                    file: file!(),
+                    line: line!(),
+                    verbosity: $verbosity,
+                    message: alloc::format!($s $(, $args)*)
+                };
+                println_serial!("Created Log");
+
+                $crate::logger::LOGGER.push_log(log);
+
+                println_serial!("Pushed Log");
+            }
         }
-    };
 }
 
 #[allow(unused_macros)]
@@ -78,7 +74,7 @@ pub struct Log {
     pub file: &'static str,
     pub line: u32,
     pub verbosity: Verbosity,
-    pub message: Cow<'static, str>,
+    pub message: String,
 }
 
 impl core::fmt::Display for Log {
@@ -118,7 +114,6 @@ pub struct Logger {
     logs: InterruptLock<CircularBuffer<Log, 1024>>,
 }
 
-#[allow(dead_code)]
 impl Logger {
     const fn new() -> Self {
         Logger {
@@ -143,9 +138,9 @@ impl Logger {
         }
     }
 
-    pub fn service(&self) {
-        while let Some(v) = self.logs.lock().pop_front() {
-            println_serial!("{}", v);
+    pub fn trigger(&self) {
+        while let Some(log) = self.logs.lock().pop_front() {
+            println_serial!("{}", log);
         }
     }
 }
@@ -154,7 +149,6 @@ pub fn init(verbose: HashMap<String, Verbosity>) {
     *LOGGER.verbose.lock() = Some(verbose);
 }
 
-#[allow(dead_code)]
-pub fn service() {
-    LOGGER.service()
+pub fn trigger() {
+    LOGGER.trigger()
 }

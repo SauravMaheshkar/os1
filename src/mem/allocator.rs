@@ -1,152 +1,99 @@
-use core::{
-    alloc::{GlobalAlloc, Layout},
-    sync::atomic::{AtomicPtr, Ordering::Relaxed},
-};
+use alloc::alloc::{GlobalAlloc, Layout};
+use core::ptr;
 
-use crate::{
-    mem::segment::{
-        deallocate_segment, get_head_of_allocated_segment, AllocatedSegment,
-        MemorySegment,
-    },
-    multiboot::MultibootInfo,
-    KERNEL_END_ADDR, KERNEL_START_ADDR,
-};
-
-pub struct Allocator {
-    head: AtomicPtr<MemorySegment>,
+/// A wrapper around spin::Mutex to permit trait implementations.
+pub struct Locked<A> {
+    inner: spin::Mutex<A>,
 }
 
-impl Allocator {
-    pub const fn new() -> Self {
-        Self {
-            head: AtomicPtr::new(core::ptr::null_mut()),
+impl<A> Locked<A> {
+    pub const fn new(inner: A) -> Self {
+        Locked {
+            inner: spin::Mutex::new(inner),
         }
     }
 
-    pub unsafe fn init(&self, info: &MultibootInfo) {
-        assert_eq!(
-            core::mem::size_of::<MemorySegment>(),
-            core::mem::size_of::<AllocatedSegment>()
-        );
+    pub fn lock(&self) -> spin::MutexGuard<A> {
+        self.inner.lock()
+    }
+}
 
-        // Find the memory block containing the kernel
-        let block = info
-            .get_mmap_entries()
-            .iter()
-            .find(|entry| entry.addr == &KERNEL_START_ADDR as *const u32 as u64)
-            .expect("failed to find kernel start address");
+/// Align the given address `addr` upwards to alignment `align`.
+///
+/// Requires that `align` is a power of two.
+fn align_up(addr: usize, align: usize) -> usize {
+    (addr + align - 1) & !(align - 1)
+}
 
-        // Calculate the reserved memory
-        let reserved_memory = (&KERNEL_END_ADDR as *const u32 as usize)
-            - (&KERNEL_START_ADDR as *const u32 as usize);
+pub struct BumpAllocator {
+    heap_start: usize,
+    heap_end: usize,
+    next: usize,
+    allocations: usize,
+}
 
-        println_vga!("Reserved memory: {:#x}", reserved_memory);
+impl BumpAllocator {
+    /// Creates a new empty bump allocator.
+    pub const fn new() -> Self {
+        BumpAllocator {
+            heap_start: 0,
+            heap_end: 0,
+            next: 0,
+            allocations: 0,
+        }
+    }
 
-        // Calculate the block size
-        let block_size = block.length as usize
-            - reserved_memory
-            - core::mem::size_of::<MemorySegment>();
+    /// Initializes the bump allocator with the given heap bounds.
+    ///
+    /// This method is unsafe because the caller must ensure that the given
+    /// memory range is unused. Also, this method must be called only once.
+    pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
+        self.heap_start = heap_start;
+        self.heap_end = heap_start.saturating_add(heap_size);
+        self.next = heap_start;
+    }
+}
 
-        println_vga!("Block size: {:?}", block_size as f32 / 1024.0);
+unsafe impl GlobalAlloc for Locked<BumpAllocator> {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let mut bump = self.lock(); // get a mutable reference
 
-        // Determine the address of the segment
-        let segment_addr = (&KERNEL_END_ADDR as *const u32 as usize) as *mut u8;
-
-        // Align the segment address to the alignment of MemorySegment
-        let alignment = core::mem::align_of::<MemorySegment>();
-        let aligned_addr =
-            (segment_addr as usize + alignment - 1) & !(alignment - 1);
-        let aligned_segment_addr = aligned_addr as *mut MemorySegment;
-
-        // Ensure the address is properly aligned for MemorySegment
-        assert_eq!(
-            aligned_segment_addr as usize
-                % core::mem::align_of::<MemorySegment>(),
-            0,
-            "Memory segment address must be properly aligned"
-        );
-
-        // Initialize the memory segment
-        *aligned_segment_addr = MemorySegment {
-            size: block_size,
-            next: core::ptr::null_mut(),
+        let alloc_start = align_up(bump.next, layout.align());
+        let alloc_end = match alloc_start.checked_add(layout.size()) {
+            Some(end) => end,
+            None => return ptr::null_mut(),
         };
 
-        // Set the head of Allocator to the memory segment address
-        self.head.store(aligned_segment_addr, Relaxed);
-    }
-}
-
-unsafe fn get_metadata(
-    memory_segment: &MemorySegment,
-    layout: &Layout,
-) -> Option<*mut u8> {
-    let head = memory_segment.get_head();
-    let tail = memory_segment.get_tail();
-
-    let mut ptr = tail.sub(layout.size());
-    ptr = ptr.sub((ptr as usize) % layout.align());
-    ptr = ptr.sub(core::mem::size_of::<AllocatedSegment>());
-
-    if ptr < head {
-        return None;
-    }
-
-    Some(ptr)
-}
-
-unsafe impl GlobalAlloc for Allocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let mut block_iter = self.head.load(Relaxed);
-
-        while !block_iter.is_null() {
-            let metadata = get_metadata(&*block_iter, &layout);
-
-            let metadata = match metadata {
-                Some(metadata) => metadata,
-                None => {
-                    block_iter = (*block_iter).next;
-                    continue;
-                }
-            };
-
-            let tail = (*block_iter).get_tail();
-
-            let size = metadata
-                .offset_from((*block_iter).get_head())
-                .try_into()
-                .expect("Expected usize for segment");
-            (*block_iter).size = size;
-
-            let metadata = metadata as *mut AllocatedSegment;
-            (*metadata).size = tail
-                .offset_from(metadata.add(1) as *mut u8)
-                .try_into()
-                .expect("Expected usize for segment tail offset");
-
-            return metadata.add(1) as *mut u8;
+        if alloc_end > bump.heap_end {
+            ptr::null_mut() // out of memory
+        } else {
+            bump.next = alloc_end;
+            bump.allocations += 1;
+            alloc_start as *mut u8
         }
-        panic!("Failed to allocate memory");
     }
 
-    /// Custom deallocation function which deallocates a block of memory
-    /// at the given `ptr` address with the given `layout`.
-    ///
-    /// # Arguments
-    /// * `ptr` - The pointer to the block of memory currently allocated
-    /// * `layout` - The same layout as the one used to allocate the memory
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        let head_ptr = get_head_of_allocated_segment(ptr);
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
+        let mut bump = self.lock(); // get a mutable reference
 
-        deallocate_segment(self.head.load(Relaxed), head_ptr);
+        bump.allocations -= 1;
+        if bump.allocations == 0 {
+            bump.next = bump.heap_start;
+        }
     }
 }
+
+#[global_allocator]
+static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
 
 #[cfg(test)]
 mod test {
     use core::sync::atomic::Ordering;
 
-    use crate::{mem::segment::MemorySegment, ALLOC};
+    use crate::mem::{
+        // allocator::ALLOCATOR,
+        segment::{AllocatedSegment, MemorySegment},
+    };
 
     fn get_state() -> [MemorySegment; 42] {
         unsafe {
@@ -155,13 +102,13 @@ mod test {
                 next: core::ptr::null_mut(),
             }; 42];
             let mut count = 0;
-            let mut iter = ALLOC.head.load(Ordering::Relaxed);
+            // let mut iter = ALLOCATOR.head.load(Ordering::Relaxed);
 
-            while !iter.is_null() {
-                state[count] = *iter;
-                count += 1;
-                iter = (*iter).next;
-            }
+            // while !iter.is_null() {
+            //     state[count] = *iter;
+            //     count += 1;
+            //     iter = (*iter).next;
+            // }
 
             state
         }
@@ -175,9 +122,39 @@ mod test {
         use alloc::boxed::Box;
 
         let initial_state = get_state();
-        let _fill = Box::new(2);
+        let fill = Box::new(4);
         let new_state = get_state();
         assert_ne!(initial_state, new_state);
+
+        let alloc_state = get_state();
+        let num_diff = initial_state
+            .iter()
+            .zip(alloc_state.iter())
+            .filter(|(a, b)| a != b)
+            .count();
+        assert_eq!(num_diff, 1);
+
+        let diff_item = initial_state
+            .iter()
+            .zip(alloc_state.iter())
+            .find(|(a, b)| a != b)
+            .expect("could not find a != b");
+
+        let before = core::ptr::addr_of!(diff_item.0.size);
+        let after = core::ptr::addr_of!(diff_item.1.size);
+        // We can only test that at least the given memory has been allocated
+        // because we do not know the state of alignment before the
+        // allocation
+        unsafe {
+            assert!(
+                before.read_unaligned()
+                    > after.read_unaligned()
+                        + 4
+                        + core::mem::size_of::<AllocatedSegment>()
+            );
+        }
+
+        drop(fill);
 
         println_serial!("✓");
     }

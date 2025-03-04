@@ -26,12 +26,10 @@ impl<T, const N: usize> CircularBuffer<T, N> {
 
         match self.increment_tail() {
             Some(tail) => self.tail = tail,
-
             None => return Err(PushError),
         }
 
         self.array[insertion_index] = MaybeUninit::new(item);
-
         Ok(())
     }
 
@@ -44,10 +42,12 @@ impl<T, const N: usize> CircularBuffer<T, N> {
 
         wrapping_increment(&mut self.head, N);
 
+        if self.tail == N + 1 {
+            self.tail = index;
+        }
+
         let mut ret = MaybeUninit::uninit();
-
         core::mem::swap(&mut ret, &mut self.array[index]);
-
         unsafe { Some(ret.assume_init()) }
     }
 

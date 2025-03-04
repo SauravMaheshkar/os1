@@ -166,10 +166,10 @@ pub unsafe fn print_gdt() {
     let limit = gdt.limit + 1;
     let base = gdt.base as *const SegmentDescriptor;
 
-    debug!("GDT: ");
-    debug!("base: {base:?}, limit: {limit:#x}");
+    // debug!("GDT: ");
+    // debug!("base: {base:?}, limit: {limit:#x}");
     for i in 0..(limit / 8) {
-        debug!("Segment {i}");
+        // debug!("Segment {i}");
         let segment = *base.add(i.into());
 
         debug!(

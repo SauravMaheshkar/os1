@@ -14,7 +14,9 @@ const VGA_WIDTH: usize = 80;
 ///
 /// The colors are based on the VGA color palette.
 #[allow(dead_code)]
-enum VgaColor {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+enum COLORS {
     Black = 0,
     Blue = 1,
     Green = 2,
@@ -33,15 +35,25 @@ enum VgaColor {
     White = 15,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+struct ColorCode(u8);
+
+impl ColorCode {
+    fn new(foreground: COLORS, background: COLORS) -> ColorCode {
+        ColorCode((background as u8) << 4 | (foreground as u8))
+    }
+}
+
 /// Set the foreground and background color for VGA Entry
 ///
 /// # Arguments
-/// * `foreground` - The foreground color from [`VgaColor`]
-/// * `background` - The background color from [`VgaColor`]
+/// * `foreground` - The foreground color from [`COLORS`]
+/// * `background` - The background color from [`COLORS`]
 ///
 /// # Returns
 /// * A `u8` representing the color
-const fn vga_entry_color(foreground: VgaColor, background: VgaColor) -> u8 {
+const fn vga_entry_color(foreground: COLORS, background: COLORS) -> u8 {
     (foreground as u8) | (background as u8) << 4
 }
 
@@ -72,7 +84,7 @@ impl TerminalWriter {
     /// * Default `vga_width` is 80.
     pub fn new() -> TerminalWriter {
         let cursor = 0;
-        let color = vga_entry_color(VgaColor::LightGray, VgaColor::Black);
+        let color = vga_entry_color(COLORS::LightGray, COLORS::Black);
         let buffer = 0xb8000 as *mut u16;
 
         for y in 0..VGA_HEIGHT {

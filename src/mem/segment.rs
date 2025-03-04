@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// Struct for a segment of memory.
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -8,19 +10,19 @@ pub struct MemorySegment {
 
 impl MemorySegment {
     /// Get a pointer to the head
-    pub unsafe fn get_head(&self) -> *mut u8 {
-        (self as *const MemorySegment).add(1) as *mut u8
+    pub fn get_head(&self) -> *mut u8 {
+        unsafe { (self as *const MemorySegment).add(1) as *mut u8 }
     }
 
     /// Get a pointer to the tail
-    pub unsafe fn get_tail(&self) -> *mut u8 {
-        self.get_head().add(self.size)
+    pub fn get_tail(&self) -> *mut u8 {
+        unsafe { self.get_head().add(self.size) }
     }
 
     /// Set tail
     pub unsafe fn set_tail(&mut self, tail: *mut u8) {
         self.size = tail
-            .offset_from(self.get_tail())
+            .offset_from(self.get_head())
             .try_into()
             .expect("End should be > than start");
     }
@@ -34,6 +36,24 @@ pub struct AllocatedSegment {
 
     /// Padding to align the size of the allocated segment.
     pub padding: [u8; 4],
+}
+
+#[allow(dead_code)]
+impl AllocatedSegment {
+    /// Get a pointer to the head
+    pub fn get_head(&self) -> *mut u8 {
+        unsafe { (self as *const AllocatedSegment).add(1) as *mut u8 }
+    }
+
+    /// Get a pointer to the tail
+    pub fn set_tail(&mut self, tail: *mut u8) {
+        unsafe {
+            self.size = tail
+                .offset_from(self.get_head())
+                .try_into()
+                .expect("End should be > than start");
+        }
+    }
 }
 
 /// Get the head of an [`AllocatedSegment`] given a pointer to it.
