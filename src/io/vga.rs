@@ -1,22 +1,25 @@
-//! VGA Module
-//!
-//! This module provides a simple interface to use VGA.
-//!
-//! # References
-//! * [Bare Bones - OSDev Wiki](https://wiki.osdev.org/Bare_Bones)
+use core::fmt;
 
-use core::fmt::Write;
+use lazy_static::lazy_static;
+use spin::Mutex;
+use volatile::Volatile;
 
-const VGA_HEIGHT: usize = 25;
-const VGA_WIDTH: usize = 80;
+lazy_static! {
+    /// A global `Writer` instance that can be used for printing to the VGA text buffer.
+    ///
+    /// Used by the `print!` and `println!` macros.
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
+}
 
-/// Enum for the different colors available in the TUI
-///
-/// The colors are based on the VGA color palette.
+/// The standard color palette in VGA text mode.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-enum COLORS {
+pub enum Color {
     Black = 0,
     Blue = 1,
     Green = 2,
@@ -35,109 +38,157 @@ enum COLORS {
     White = 15,
 }
 
+/// A combination of a foreground and a background color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 struct ColorCode(u8);
 
 impl ColorCode {
-    fn new(foreground: COLORS, background: COLORS) -> ColorCode {
+    /// Create a new `ColorCode` with the given foreground and background
+    /// colors.
+    fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | (foreground as u8))
     }
 }
 
-/// Set the foreground and background color for VGA Entry
-///
-/// # Arguments
-/// * `foreground` - The foreground color from [`COLORS`]
-/// * `background` - The background color from [`COLORS`]
-///
-/// # Returns
-/// * A `u8` representing the color
-const fn vga_entry_color(foreground: COLORS, background: COLORS) -> u8 {
-    (foreground as u8) | (background as u8) << 4
+/// A screen character in the VGA text buffer, consisting of an ASCII character
+/// and a `ColorCode`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+struct ScreenChar {
+    ascii_character: u8,
+    color_code: ColorCode,
 }
 
-/// Create a VGA Entry
-///
-/// # Arguments
-/// * `uc` - The Unicode character as a `u8`
-/// * `color` - The color as a `u8`
-///
-/// # Returns
-/// * A `u16` representing the VGA Entry
-const fn vga_entry(uc: u8, color: u8) -> u16 {
-    uc as u16 | (color as u16) << 8
+/// The height of the text buffer (normally 25 lines).
+const BUFFER_HEIGHT: usize = 25;
+/// The width of the text buffer (normally 80 columns).
+const BUFFER_WIDTH: usize = 80;
+
+/// A structure representing the VGA text buffer.
+#[repr(transparent)]
+struct Buffer {
+    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
-/// The Terminal Writer is responsible for writing to the VGA buffer.
-pub struct TerminalWriter {
-    cursor: usize,
-    color: u8,
-    buffer: *mut u16,
+/// A writer type that allows writing ASCII bytes and strings to an underlying
+/// `Buffer`.
+///
+/// Wraps lines at `BUFFER_WIDTH`. Supports newline characters and implements
+/// the `core::fmt::Write` trait.
+pub struct Writer {
+    column_position: usize,
+    color_code: ColorCode,
+    buffer: &'static mut Buffer,
 }
 
-impl TerminalWriter {
-    /// Creates a [`TerminalWriter`] with a VGA buffer filled with spaces `' '`.
+impl Writer {
+    /// Writes an ASCII byte to the buffer.
     ///
-    /// * Default color is `LightGray` on `Black`.
-    /// * Default `vga_height` is 25.
-    /// * Default `vga_width` is 80.
-    pub fn new() -> TerminalWriter {
-        let cursor = 0;
-        let color = vga_entry_color(COLORS::LightGray, COLORS::Black);
-        let buffer = 0xb8000 as *mut u16;
-
-        for y in 0..VGA_HEIGHT {
-            for x in 0..VGA_WIDTH {
-                let index = y * VGA_WIDTH + x;
-                unsafe {
-                    *buffer.add(index) = vga_entry(b' ', color);
+    /// Wraps lines at `BUFFER_WIDTH`. Supports the `\n` newline character.
+    pub fn write_byte(&mut self, byte: u8) {
+        match byte {
+            b'\n' => self.new_line(),
+            byte => {
+                if self.column_position >= BUFFER_WIDTH {
+                    self.new_line();
                 }
+
+                let row = BUFFER_HEIGHT - 1;
+                let col = self.column_position;
+
+                let color_code = self.color_code;
+                self.buffer.chars[row][col].write(ScreenChar {
+                    ascii_character: byte,
+                    color_code,
+                });
+                self.column_position += 1;
             }
         }
+    }
 
-        TerminalWriter {
-            cursor,
-            color,
-            buffer,
+    /// Writes the given ASCII string to the buffer.
+    ///
+    /// Wraps lines at `BUFFER_WIDTH`. Supports the `\n` newline character. Does
+    /// **not** support strings with non-ASCII characters, since they can't
+    /// be printed in the VGA text mode.
+    fn write_string(&mut self, s: &str) {
+        for byte in s.bytes() {
+            match byte {
+                // printable ASCII byte or newline
+                0x20..=0x7e | b'\n' => self.write_byte(byte),
+                // not part of printable ASCII range
+                _ => self.write_byte(0xfe),
+            }
         }
     }
 
-    /// Write a string to the VGA buffer.
-    ///
-    /// # Arguments
-    /// * `data` - The string as a slice of `u8`
-    pub fn write(&mut self, data: &[u8]) {
-        for c in data {
-            self.putchar(*c);
+    /// Shifts all lines one line up and clears the last row.
+    fn new_line(&mut self) {
+        for row in 1..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                let character = self.buffer.chars[row][col].read();
+                self.buffer.chars[row - 1][col].write(character);
+            }
         }
+        self.clear_row(BUFFER_HEIGHT - 1);
+        self.column_position = 0;
     }
 
-    /// Write a character to the VGA buffer.
-    ///
-    /// # Arguments
-    /// * `c` - The Unicode character as a `u8`
-    fn putchar(&mut self, c: u8) {
-        // newline
-        if c == b'\n' {
-            self.cursor += VGA_WIDTH - (self.cursor % VGA_WIDTH);
-            return;
-        }
-
-        unsafe {
-            *self.buffer.add(self.cursor) = vga_entry(c, self.color);
-            self.cursor += 1;
-            self.cursor %= VGA_WIDTH * VGA_HEIGHT;
+    /// Clears a row by overwriting it with blank characters.
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(blank);
         }
     }
 }
 
-impl Write for TerminalWriter {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        self.write(s.as_bytes());
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
         Ok(())
     }
 }
 
-// Shared static variables must have a type that implements `Sync`
-unsafe impl Sync for TerminalWriter {}
+/// Like the `print!` macro in the standard library, but prints to the VGA text
+/// buffer.
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::io::vga::_print(format_args!($($arg)*)));
+}
+
+/// Like the `println!` macro in the standard library, but prints to the VGA
+/// text buffer.
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+/// Prints the given formatted string to the VGA text buffer through the global
+/// `WRITER` instance.
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
+}
+
+#[test_case]
+fn test_println() {
+    println!("simple output");
+}
+
+#[test_case]
+fn test_println_output() {
+    let s = "Some test string that fits on a single line";
+    println!("{}", s);
+    for (i, c) in s.chars().enumerate() {
+        let screen_char =
+            WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
+        assert_eq!(char::from(screen_char.ascii_character), c);
+    }
+}

@@ -4,7 +4,6 @@ cargo build && cargo run
 
 ## Requirements
 
-* [`i686-elf-gcc`](https://wiki.osdev.org/GCC_Cross-Compiler) cross compiler
 * [`qemu-system-i386`](https://manpages.debian.org/stretch/qemu-system-x86/qemu-system-i386.1.en.html)
 
 ## References
