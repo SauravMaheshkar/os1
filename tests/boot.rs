@@ -12,7 +12,7 @@ use os1::println;
 pub extern "C" fn _start() -> ! {
     test_main();
 
-    loop {}
+    os1::hlt_loop();
 }
 
 #[panic_handler]

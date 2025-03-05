@@ -27,7 +27,7 @@ fn main(boot_info: &'static BootInfo) -> ! {
         .expect("heap initialization failed");
 
     test_main();
-    loop {}
+    os1::hlt_loop();
 }
 
 #[test_case]

@@ -13,7 +13,7 @@ pub extern "C" fn _start() -> ! {
     should_fail();
     println_serial!("[test did not panic]");
     exit_qemu(QemuExitCode::Failed);
-    loop {}
+    os1::hlt_loop();
 }
 
 fn should_fail() {

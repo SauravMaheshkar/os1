@@ -31,7 +31,7 @@ pub fn hlt_loop() -> ! {
 }
 
 pub trait Testable {
-    fn run(&self) -> ();
+    fn run(&self);
 }
 
 impl<T> Testable for T

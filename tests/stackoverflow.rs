@@ -53,7 +53,7 @@ extern "x86-interrupt" fn test_double_fault_handler(
 ) -> ! {
     println_serial!("✓");
     exit_qemu(QemuExitCode::Success);
-    loop {}
+    os1::hlt_loop();
 }
 
 #[panic_handler]

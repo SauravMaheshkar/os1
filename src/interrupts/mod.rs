@@ -30,9 +30,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     _stack_frame: InterruptStackFrame,
 ) {
     use lazy_static::lazy_static;
-    use pc_keyboard::{
-        layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1,
-    };
+    use pc_keyboard::{layouts, HandleControl, Keyboard, ScancodeSet1};
     use spin::Mutex;
     use x86_64::instructions::port::Port;
 
@@ -45,7 +43,6 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
             ));
     }
 
-    let mut keyboard = KEYBOARD.lock();
     let mut port = Port::new(0x60);
 
     let scancode: u8 = unsafe { port.read() };
