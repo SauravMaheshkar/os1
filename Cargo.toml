@@ -4,6 +4,10 @@ version = "0.0.1"
 edition = "2021"
 license = "MIT"
 
+
+[lints.clippy]
+new_without_default = "allow"
+
 [[test]]
 name = "panic"
 harness = false
@@ -11,7 +15,6 @@ harness = false
 [[test]]
 name = "stackoverflow"
 harness = false
-
 
 [dependencies]
 bootloader = { version = "0.9", features = ["map_physical_memory"] }
@@ -26,6 +29,20 @@ x86_64 = "0.15.2"
 [dependencies.lazy_static]
 version = "1.0"
 features = ["spin_no_std"]
+
+[dependencies.conquer-once]
+version = "0.2.0"
+default-features = false
+
+[dependencies.futures-util]
+version = "0.3.4"
+default-features = false
+features = ["alloc"]
+
+[dependencies.crossbeam-queue]
+version = "0.3.11"
+default-features = false
+features = ["alloc"]
 
 [package.metadata.bootimage]
 test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio", "-display", "none"]

@@ -10,7 +10,10 @@ use alloc::boxed::Box;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
-use os1::{mem, println};
+use os1::{
+    mem, println,
+    task::{executor::Executor, keyboard, Task},
+};
 
 entry_point!(kernel);
 
@@ -31,14 +34,15 @@ fn kernel(info: &'static BootInfo) -> ! {
     mem::allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
-    // allocate a number on the heap
-    let heap_value = Box::new(41);
-    println!("heap_value at {:p}", heap_value);
-
     #[cfg(test)]
     test_main();
 
-    os1::hlt_loop();
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
+
+    // os1::hlt_loop();
 }
 
 #[cfg(not(test))]
@@ -52,4 +56,13 @@ fn panic(info: &PanicInfo) -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     os1::test_panic_handler(info)
+}
+
+async fn async_number() -> u32 {
+    42
+}
+
+async fn example_task() {
+    let number = async_number().await;
+    println!("async number: {}", number);
 }

@@ -12,6 +12,7 @@ use core::panic::PanicInfo;
 pub mod interrupts;
 pub mod io;
 pub mod mem;
+pub mod task;
 
 pub fn init() {
     interrupts::gdt::init_gdt();

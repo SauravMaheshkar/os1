@@ -18,7 +18,7 @@ extern "x86-interrupt" fn double_fault_handler(
 extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame,
 ) {
-    crate::print!(".");
+    // crate::print!(".");
     unsafe {
         pic::PICS
             .lock()
@@ -49,16 +49,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     let mut port = Port::new(0x60);
 
     let scancode: u8 = unsafe { port.read() };
-    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-        if let Some(key) = keyboard.process_keyevent(key_event) {
-            match key {
-                DecodedKey::Unicode(character) => {
-                    crate::print!("{}", character)
-                }
-                DecodedKey::RawKey(key) => crate::print!("{:?}", key),
-            }
-        }
-    }
+    crate::task::keyboard::add_scancode(scancode);
 
     unsafe {
         pic::PICS
