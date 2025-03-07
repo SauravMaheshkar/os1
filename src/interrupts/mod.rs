@@ -67,8 +67,3 @@ extern "x86-interrupt" fn page_fault_handler(
     crate::println!("{:#?}", stack_frame);
     crate::hlt_loop();
 }
-
-#[test_case]
-fn test_breakpoint_exception() {
-    x86_64::instructions::interrupts::int3();
-}

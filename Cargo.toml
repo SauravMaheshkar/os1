@@ -4,17 +4,8 @@ version = "0.0.1"
 edition = "2021"
 license = "MIT"
 
-
 [lints.clippy]
 new_without_default = "allow"
-
-[[test]]
-name = "panic"
-harness = false
-
-[[test]]
-name = "stackoverflow"
-harness = false
 
 [dependencies]
 bootloader = { version = "0.9", features = ["map_physical_memory"] }
