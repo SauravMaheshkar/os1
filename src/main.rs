@@ -1,8 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(custom_test_frameworks)]
-#![test_runner(os1::test_runner)]
-#![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
 
@@ -33,9 +30,6 @@ fn kernel(info: &'static BootInfo) -> ! {
     mem::allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
-    #[cfg(test)]
-    test_main();
-
     let mut executor = Executor::new();
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
@@ -44,17 +38,10 @@ fn kernel(info: &'static BootInfo) -> ! {
     // os1::hlt_loop();
 }
 
-#[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("[PANIC]: {}\n", info);
     os1::hlt_loop();
-}
-
-#[cfg(test)]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    os1::test_panic_handler(info)
 }
 
 async fn async_number() -> u32 {
