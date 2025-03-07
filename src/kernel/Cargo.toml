@@ -1,0 +1,20 @@
+[package]
+name = "kernel"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+
+[[bin]]
+name = "kernel"
+test = false
+bench = false
+
+[dependencies]
+bootloader-boot-config = "0.11.10"
+bootloader-x86_64-common = "0.11.10"
+bootloader_api = "0.11.10"
+x86_64 = "0.15.2"
+
+[dependencies.log]
+version = "0.4.25"
+default-features = false
