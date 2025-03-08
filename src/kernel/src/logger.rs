@@ -1,16 +1,13 @@
-use bootloader_api::BootInfo;
+use bootloader_api::info::FrameBufferInfo;
 use bootloader_boot_config::LevelFilter;
 use bootloader_x86_64_common::init_logger;
 
 pub fn init(
-    info: &'static mut BootInfo,
+    info: FrameBufferInfo,
+    buffer: &'static mut [u8],
     frame_buffer_logger_status: bool,
     serial_logger_status: bool,
 ) {
-    let framebuffer = info.framebuffer.take().unwrap();
-    let info = framebuffer.info();
-    let buffer = framebuffer.into_buffer();
-
     init_logger(
         buffer,
         info,

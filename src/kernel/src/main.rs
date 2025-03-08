@@ -24,7 +24,7 @@ fn kernel_main(info: &'static mut BootInfo) -> ! {
     kernel::init(info, true, true);
 
     // Manually trigger a breakpoint exception
-    x86_64::instructions::interrupts::int3();
+    // x86_64::instructions::interrupts::int3();
 
     kernel::hlt_loop();
 }
