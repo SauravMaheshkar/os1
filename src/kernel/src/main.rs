@@ -22,6 +22,10 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 #[no_mangle]
 fn kernel_main(info: &'static mut BootInfo) -> ! {
     kernel::init(info, true, true);
+
+    // Manually trigger a breakpoint exception
+    x86_64::instructions::interrupts::int3();
+
     kernel::hlt_loop();
 }
 
@@ -31,6 +35,6 @@ fn kernel_main(info: &'static mut BootInfo) -> ! {
 /// * `_info` - The panic information
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    log::info!("[PANIC]: {}", info);
+    log::error!("[PANIC]: {}", info);
     kernel::hlt_loop();
 }

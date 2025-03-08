@@ -1,7 +1,9 @@
 #![no_std]
+#![feature(abi_x86_interrupt)]
 
 use bootloader_api::BootInfo;
 
+pub mod interrupts;
 pub mod logger;
 
 pub fn init(
@@ -14,6 +16,11 @@ pub fn init(
         frame_buffer_logger_status,
         serial_logger_status,
     );
+
+    interrupts::gdt::init();
+    interrupts::idt::init();
+
+    x86_64::instructions::interrupts::enable();
 }
 
 pub fn hlt_loop() -> ! {
