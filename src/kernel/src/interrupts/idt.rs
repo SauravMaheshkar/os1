@@ -6,9 +6,6 @@ pub static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
     idt.breakpoint
         .set_handler_fn(crate::interrupts::breakpoint_handler);
 
-    // idt.double_fault
-    //     .set_handler_fn(crate::interrupts::double_fault_handler);
-
     unsafe {
         idt.double_fault
             .set_handler_fn(crate::interrupts::double_fault_handler)
