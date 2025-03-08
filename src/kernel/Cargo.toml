@@ -10,6 +10,7 @@ test = false
 bench = false
 
 [dependencies]
+acpi = "5.2.0"
 bootloader-boot-config = "0.11.10"
 bootloader-x86_64-common = "0.11.10"
 bootloader_api = "0.11.10"
