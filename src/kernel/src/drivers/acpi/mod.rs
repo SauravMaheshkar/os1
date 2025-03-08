@@ -16,14 +16,6 @@ impl ACPI {
     }
 }
 
-// impl Clone for ACPI {
-//     fn clone(&self) -> Self {
-//         Self {
-//             physical_memory_offset: self.physical_memory_offset,
-//         }
-//     }
-// }
-
 unsafe impl Send for ACPI {}
 
 impl AcpiHandler for ACPI {
