@@ -9,6 +9,7 @@ pub mod drivers;
 pub mod interrupts;
 pub mod logger;
 pub mod mm;
+pub mod task;
 
 pub fn init(
     framework_info: &'static mut BootInfo,

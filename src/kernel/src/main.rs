@@ -1,11 +1,17 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
 use core::panic::PanicInfo;
 
 use bootloader_api::{
     config::{BootloaderConfig, Mapping},
     entry_point, BootInfo,
+};
+use kernel::{
+    devices::keyboard,
+    task::{executor, Task},
 };
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
@@ -23,10 +29,10 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 fn kernel_main(info: &'static mut BootInfo) -> ! {
     kernel::init(info, true, true);
 
-    // Manually trigger a breakpoint exception
-    // x86_64::instructions::interrupts::int3();
-
-    kernel::hlt_loop();
+    let mut executor = executor::Executor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
 }
 
 /// Simple panic handler that loops forever
@@ -37,4 +43,13 @@ fn kernel_main(info: &'static mut BootInfo) -> ! {
 fn panic(info: &PanicInfo) -> ! {
     log::error!("[PANIC]: {}", info);
     kernel::hlt_loop();
+}
+
+async fn async_number() -> u32 {
+    42
+}
+
+async fn example_task() {
+    let number = async_number().await;
+    log::info!("async number: {}", number);
 }
