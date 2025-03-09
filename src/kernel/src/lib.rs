@@ -6,6 +6,7 @@ use x86_64::VirtAddr;
 
 pub mod devices;
 pub mod drivers;
+pub mod graphics;
 pub mod interrupts;
 pub mod logger;
 pub mod mm;

@@ -14,9 +14,11 @@ acpi = "5.2.0"
 bootloader-boot-config = "0.11.10"
 bootloader-x86_64-common = "0.11.10"
 bootloader_api = "0.11.10"
+embedded-graphics = "0.8.1"
 linked_list_allocator = "0.10.5"
 pc-keyboard = "0.8.0"
 spin = "0.9.8"
+tinytga = "0.5.0"
 x86_64 = "0.15.2"
 
 [dependencies.log]

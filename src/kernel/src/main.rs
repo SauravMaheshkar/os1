@@ -27,7 +27,11 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 /// This function is called by the boot code in `boot.s`
 #[no_mangle]
 fn kernel_main(info: &'static mut BootInfo) -> ! {
+    let mut framebuffer = unsafe { core::ptr::read(&info.framebuffer) };
+
     kernel::init(info, true, true);
+
+    kernel::graphics::examples::tga::draw_tga(&mut framebuffer.take().unwrap());
 
     let mut executor = executor::Executor::new();
     executor.spawn(Task::new(example_task()));
