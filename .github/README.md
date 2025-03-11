@@ -1,6 +1,4 @@
-```bash
-cargo build && cargo run
-```
+![](./.github/assets/demo.png)
 
 ## 🚀 Features
 
