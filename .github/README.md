@@ -1,4 +1,4 @@
-![](./.github/assets/demo.png)
+![](assets/demo.png)
 
 ## 🚀 Features
 
