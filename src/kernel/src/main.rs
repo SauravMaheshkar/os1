@@ -9,7 +9,10 @@ use bootloader_api::{
     config::{BootloaderConfig, Mapping},
     entry_point, BootInfo,
 };
-use kernel::task::{executor, Task};
+use kernel::{
+    devices::keyboard,
+    task::{executor, Task},
+};
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
@@ -30,8 +33,7 @@ fn kernel_main(info: &'static mut BootInfo) -> ! {
 
     let mut executor = executor::Executor::new();
 
-    // use kernel::devices::keyboard;
-    // executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
 
     // executor.spawn(Task::new(async move {
     //     kernel::graphics::examples::tga::draw_tga(
