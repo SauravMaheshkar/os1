@@ -9,10 +9,7 @@ use bootloader_api::{
     config::{BootloaderConfig, Mapping},
     entry_point, BootInfo,
 };
-use kernel::{
-    devices::keyboard,
-    task::{executor, Task},
-};
+use kernel::task::{executor, Task};
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
@@ -31,29 +28,41 @@ fn kernel_main(info: &'static mut BootInfo) -> ! {
 
     kernel::init(info, true, true);
 
-    kernel::graphics::examples::tga::draw_tga(&mut framebuffer.take().unwrap());
-
     let mut executor = executor::Executor::new();
-    executor.spawn(Task::new(example_task()));
-    executor.spawn(Task::new(keyboard::print_keypresses()));
+
+    // use kernel::devices::keyboard;
+    // executor.spawn(Task::new(keyboard::print_keypresses()));
+
+    // executor.spawn(Task::new(async move {
+    //     kernel::graphics::examples::tga::draw_tga(
+    //         &mut framebuffer.take().unwrap(),
+    //     )
+    //     .await;
+    // }));
+
+    // executor.spawn(Task::new(async move {
+    //     kernel::graphics::examples::bounce::bouncing_ball(
+    //         &mut framebuffer.take().unwrap(),
+    //     )
+    //     .await;
+    // }));
+
+    executor.spawn(Task::new(async move {
+        kernel::graphics::examples::magic_word::magic_word(
+            &mut framebuffer.take().unwrap(),
+        )
+        .await;
+    }));
+
     executor.run();
 }
 
 /// Simple panic handler that loops forever
 ///
 /// # Arguments
-/// * `_info` - The panic information
+/// * `info` - The panic information
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     log::error!("[PANIC]: {}", info);
     kernel::hlt_loop();
-}
-
-async fn async_number() -> u32 {
-    42
-}
-
-async fn example_task() {
-    let number = async_number().await;
-    log::info!("async number: {}", number);
 }

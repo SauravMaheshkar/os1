@@ -8,7 +8,7 @@ use tinytga::Tga;
 
 use crate::graphics::display::Display;
 
-pub fn draw_tga(frame_buffer: &mut FrameBuffer) {
+pub async fn draw_tga(frame_buffer: &mut FrameBuffer) {
     let mut display = Display::new(frame_buffer);
     let data = include_bytes!("./snoopy.tga");
     let tga: Tga<Rgb888> = Tga::from_slice(data).unwrap();

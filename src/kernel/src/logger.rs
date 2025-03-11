@@ -11,7 +11,7 @@ pub fn init(
     init_logger(
         buffer,
         info,
-        LevelFilter::Info,
+        LevelFilter::Warn,
         frame_buffer_logger_status,
         serial_logger_status,
     );

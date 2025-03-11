@@ -111,45 +111,40 @@ impl DrawTarget for Display<'_> {
     ) -> Result<(), Self::Error> {
         let info = self.framebuffer.info();
 
+        // Early return
+        if area.top_left.x >= info.width as i32
+            || area.top_left.y >= info.height as i32
+            || area.top_left.x + area.size.width as i32 <= 0
+            || area.top_left.y + area.size.height as i32 <= 0
+        {
+            return Ok(());
+        }
+
+        let start_x = area.top_left.x.max(0) as usize;
+        let start_y = area.top_left.y.max(0) as usize;
+        let end_x = (area.top_left.x + area.size.width as i32)
+            .min(info.width as i32) as usize;
+        let end_y = (area.top_left.y + area.size.height as i32)
+            .min(info.height as i32) as usize;
+
+        if start_x >= end_x || start_y >= end_y {
+            return Ok(());
+        }
+
         match info.pixel_format {
             PixelFormat::Bgr => {
-                let top_left_pixel_index = {
-                    let line_offset = area.top_left.y as usize * info.stride;
-                    let pixel_offset = line_offset + area.top_left.x as usize;
-                    pixel_offset * info.bytes_per_pixel
-                };
                 let buffer = self.framebuffer.buffer_mut();
-                let top_left_pixel = &mut buffer[top_left_pixel_index
-                    ..top_left_pixel_index + info.bytes_per_pixel];
-                top_left_pixel[0] = color.b();
-                top_left_pixel[1] = color.g();
-                top_left_pixel[2] = color.r();
 
-                for x in area.top_left.x as usize
-                    ..area.top_left.x as usize + area.size.width as usize
-                {
-                    let pixel_index = (area.top_left.y as usize * info.stride
-                        + x)
-                        * info.bytes_per_pixel;
-                    buffer.copy_within(
-                        top_left_pixel_index
-                            ..top_left_pixel_index + info.bytes_per_pixel,
-                        pixel_index,
-                    );
-                }
-                for y in area.top_left.y as usize
-                    ..area.top_left.y as usize + area.size.height as usize
-                {
-                    let start_index = (y * info.stride
-                        + area.top_left.x as usize)
-                        * info.bytes_per_pixel;
-                    buffer.copy_within(
-                        top_left_pixel_index
-                            ..top_left_pixel_index
-                                + info.bytes_per_pixel
-                                    * area.size.width as usize,
-                        start_index,
-                    );
+                for y in start_y..end_y {
+                    for x in start_x..end_x {
+                        let pixel_index =
+                            (y * info.stride + x) * info.bytes_per_pixel;
+                        if pixel_index + info.bytes_per_pixel <= buffer.len() {
+                            buffer[pixel_index] = color.b();
+                            buffer[pixel_index + 1] = color.g();
+                            buffer[pixel_index + 2] = color.r();
+                        }
+                    }
                 }
             }
             other => panic!("unknown pixel format {other:?}"),
