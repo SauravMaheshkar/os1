@@ -42,19 +42,19 @@ fn kernel_main(info: &'static mut BootInfo) -> ! {
     //     .await;
     // }));
 
-    // executor.spawn(Task::new(async move {
-    //     kernel::graphics::examples::bounce::bouncing_ball(
-    //         &mut framebuffer.take().unwrap(),
-    //     )
-    //     .await;
-    // }));
-
     executor.spawn(Task::new(async move {
-        kernel::graphics::examples::magic_word::magic_word(
+        kernel::graphics::examples::bounce::bouncing_ball(
             &mut framebuffer.take().unwrap(),
         )
         .await;
     }));
+
+    // executor.spawn(Task::new(async move {
+    //     kernel::graphics::examples::magic_word::magic_word(
+    //         &mut framebuffer.take().unwrap(),
+    //     )
+    //     .await;
+    // }));
 
     executor.run();
 }

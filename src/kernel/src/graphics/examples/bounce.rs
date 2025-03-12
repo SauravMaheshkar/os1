@@ -40,6 +40,6 @@ pub async fn bouncing_ball(frame_buffer: &mut FrameBuffer) {
             .draw(&mut display)
             .unwrap();
 
-        for _ in 0..1000000 {}
+        for _ in 0..100000 {}
     }
 }
