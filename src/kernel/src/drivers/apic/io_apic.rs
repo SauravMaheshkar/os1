@@ -1,7 +1,16 @@
+//! I/O APIC (Advanced Programmable Interrupt Controller) module
 use x86_64::structures::paging::{FrameAllocator, Mapper, Size4KiB};
 
 use super::map_apic;
 
+/// Initialize the I/O APIC
+///
+/// # Arguments
+/// * `local_apic_addr` - The physical address of the I/O APIC
+/// * `mapper` - The mapper to use for mapping
+///   ([`x86_64::structures::paging::Mapper`])
+/// * `frame_allocator` - The frame allocator to use for allocating frames
+///  ([`x86_64::structures::paging::FrameAllocator`])
 pub unsafe fn init(
     ioapic_address: usize,
     mapper: &mut impl Mapper<Size4KiB>,

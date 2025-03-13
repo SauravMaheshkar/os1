@@ -33,7 +33,9 @@ fn list_index(layout: &Layout) -> Option<usize> {
     BLOCK_SIZES.iter().position(|&s| s >= required_block_size)
 }
 
+/// A node in a singly-linked list.
 struct ListNode {
+    /// The next node in the list.
     next: Option<&'static mut ListNode>,
 }
 

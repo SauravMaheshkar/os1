@@ -1,3 +1,5 @@
+//! Keyboard Utilities
+
 use core::{
     pin::Pin,
     task::{Context, Poll},
@@ -17,6 +19,13 @@ use crate::drivers::apic::{self, registers::APICRegisters};
 static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
 
+/// Initialize the keyboard
+///
+/// # Safety
+/// This function directly writes to memory-mapped Local APIC registers.
+///
+/// # Arguments
+/// * `local_apic_ptr` - A pointer to the Local APIC registers
 pub unsafe fn init(local_apic_ptr: *mut u32) {
     let keyboard_register =
         local_apic_ptr.offset(APICRegisters::LvtLint1 as isize / 4);
@@ -25,9 +34,12 @@ pub unsafe fn init(local_apic_ptr: *mut u32) {
     );
 }
 
-/// Called by the keyboard interrupt handler
+/// Called by the keyboard interrupt handler (must not block or allocate)
 ///
-/// Must not block or allocate.
+/// Adds a scancode to the scancode queue
+///
+/// # Arguments
+/// * `scancode` - The scancode received from the keyboard
 pub(crate) fn add_scancode(scancode: u8) {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         if queue.push(scancode).is_err() {
@@ -40,11 +52,15 @@ pub(crate) fn add_scancode(scancode: u8) {
     }
 }
 
+/// A stream of scancodes
 pub struct ScancodeStream {
     _private: (),
 }
 
 impl ScancodeStream {
+    /// Create a new ScancodeStream (should only be called once)
+    ///
+    /// initializes the scancode queue with [`ArrayQueue`](https://docs.rs/crossbeam/latest/crossbeam/queue/struct.ArrayQueue.html)
     pub fn new() -> Self {
         SCANCODE_QUEUE
             .try_init_once(|| ArrayQueue::new(100))
@@ -56,7 +72,15 @@ impl ScancodeStream {
 impl Stream for ScancodeStream {
     type Item = u8;
 
+    /// Poll for the next scancode
+    ///
+    /// If the scancode queue is empty, the current task is registered to be
+    /// woken up when a scancode is added to the queue.
+    ///
+    /// # Arguments
+    /// * `cx` - The current task's context
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<u8>> {
+        // try to get the scancode queue
         let queue = SCANCODE_QUEUE
             .try_get()
             .expect("scancode queue not initialized");
@@ -66,6 +90,7 @@ impl Stream for ScancodeStream {
             return Poll::Ready(Some(scancode));
         }
 
+        // slow path
         WAKER.register(cx.waker());
         match queue.pop() {
             Some(scancode) => {
@@ -77,6 +102,17 @@ impl Stream for ScancodeStream {
     }
 }
 
+/// Print keypresses to the log
+///
+/// This function acts as an example of how to use the [`ScancodeStream`] and
+/// `pc_keyboard::Keyboard`.
+///
+/// # Example
+/// ```no_run
+/// let mut executor = executor::Executor::new();
+/// executor.spawn(Task::new(keyboard::print_keypresses()));
+/// executor.run();
+/// ```
 pub async fn print_keypresses() {
     let mut scancodes = ScancodeStream::new();
     let mut keyboard = Keyboard::new(
@@ -99,6 +135,12 @@ pub async fn print_keypresses() {
     }
 }
 
+/// Keyboard interrupt handler
+///
+/// reads the scancode from the keyboard port and adds it to the scancode queue
+///
+/// # Arguments
+/// * `_stack_frame` - The interrupt stack frame
 pub extern "x86-interrupt" fn keyboard_handler(
     _stack_frame: InterruptStackFrame,
 ) {

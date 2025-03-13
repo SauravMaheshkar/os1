@@ -1,3 +1,4 @@
+//! Global Descriptor Table (GDT) module.
 use core::ptr::addr_of;
 
 use spin::Lazy;
@@ -43,12 +44,19 @@ pub static GDT: Lazy<(GlobalDescriptorTable, Selectors)> = Lazy::new(|| {
     )
 });
 
+/// Segment selectors
 pub struct Selectors {
+    /// Code segment selector
     code_selector: SegmentSelector,
+    /// Data segment selector
     data_selector: SegmentSelector,
+    /// Task State Segment selector
     tss_selector: SegmentSelector,
 }
 
+/// Initialize the GDT
+///
+/// Loads the GDT into the CPU
 pub fn init() {
     use x86_64::instructions::{
         segmentation::{Segment, CS},

@@ -1,12 +1,24 @@
+//! Primitives for drawing on the framebuffer.
 use bootloader_api::info::{FrameBuffer, PixelFormat};
 use embedded_graphics::pixelcolor::{Rgb888, RgbColor};
 
+/// A position in the framebuffer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Position {
+    /// The x coordinate.
     pub x: usize,
+    /// The y coordinate.
     pub y: usize,
 }
 
+/// Set a pixel in the framebuffer.
+///
+/// supports RGB, BGR, and grayscale pixel formats.
+///
+/// # Arguments
+/// * `framebuffer` - The framebuffer to draw on.
+/// * `position` - The position of the pixel as a [`Position`].
+/// * `color` - The color of the pixel as a [`Rgb888`] color.
 pub fn set_pixel_in(
     framebuffer: &mut FrameBuffer,
     position: Position,

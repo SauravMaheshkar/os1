@@ -1,3 +1,4 @@
+//! Paging module
 use bootloader_api::info::{MemoryRegionKind::Usable, MemoryRegions};
 use x86_64::{
     registers::control::Cr3,
@@ -7,18 +8,25 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
+/// A FrameAllocator that returns usable frames from the bootloader's memory
+/// map.
 pub struct BootInfoFrameAllocator {
+    /// The memory regions from the bootloader.
     memory_map: &'static MemoryRegions,
+    /// The next frame to return.
     next: usize,
 }
 
 impl BootInfoFrameAllocator {
+    /// Create a new BootInfoFrameAllocator.
     pub fn new(memory_map: &'static MemoryRegions) -> Self {
         BootInfoFrameAllocator {
             memory_map,
             next: 0,
         }
     }
+
+    /// Returns an iterator over the usable frames from the memory map.
     pub fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> {
         let regions = self.memory_map.iter();
 
@@ -42,11 +50,25 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     }
 }
 
+/// Initialize the offset page table.
+///
+/// # Arguments
+/// * `physical_memory_offset` - The offset of the physical memory.
+///
+/// # Returns
+/// A static offset page table.
 pub fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
     let level4_table = active_level4_table(physical_memory_offset);
     unsafe { OffsetPageTable::new(level4_table, physical_memory_offset) }
 }
 
+/// Get a mutable ptr to the level 4 table.
+///
+/// # Arguments
+/// * `physical_memory_offset` - The offset of the physical memory.
+///
+/// # Returns
+/// A mutable ptr to the level 4 table.
 fn active_level4_table(
     physical_memory_offset: VirtAddr,
 ) -> &'static mut PageTable {

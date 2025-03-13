@@ -24,7 +24,7 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
 /// The entry point of the kernel
 ///
-/// This function is called by the boot code in `boot.s`
+/// This function is passed into the [`bootloader_api::entry_point`] macro.
 #[no_mangle]
 fn kernel_main(info: &'static mut BootInfo) -> ! {
     let mut framebuffer = unsafe { core::ptr::read(&info.framebuffer) };
@@ -63,6 +63,9 @@ fn kernel_main(info: &'static mut BootInfo) -> ! {
 ///
 /// # Arguments
 /// * `info` - The panic information
+///
+/// Logs the panic information and then enters an infinite loop using
+/// [`kernel::hlt_loop`] to prevent the kernel from crashing.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     log::error!("[PANIC]: {}", info);

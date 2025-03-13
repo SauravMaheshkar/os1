@@ -1,3 +1,4 @@
+//! ACPI + APIC drivers
 use x86_64::{
     structures::paging::{FrameAllocator, Mapper, Size4KiB},
     VirtAddr,
@@ -8,6 +9,7 @@ pub mod apic;
 
 extern crate acpi as acpi_lib;
 
+/// Disable the legacy PIC (Programmable Interrupt Controller)
 pub fn disable_pic() {
     use x86_64::instructions::port::Port;
 
@@ -16,6 +18,18 @@ pub fn disable_pic() {
     }
 }
 
+/// Map the APIC to the virtual address space
+///
+/// initialize the ACPI + APIC (both local and I/O) and disable the legacy PIC
+///
+/// # Arguments
+/// * `rsdp` - The physical address of the RSDP
+/// * `physical_memory_offset` - The physical memory offset as a
+///   [`x86_64::VirtAddr`]
+/// * `mapper` - The mapper to use for mapping
+///   ([`x86_64::structures::paging::Mapper`])
+/// * `frame_allocator` - The frame allocator to use for allocating frames
+///  ([`x86_64::structures::paging::FrameAllocator`])
 pub unsafe fn init(
     rsdp: usize,
     physical_memory_offset: VirtAddr,

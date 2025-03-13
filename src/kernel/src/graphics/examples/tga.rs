@@ -1,3 +1,4 @@
+//! Draw a TGA image on the screen
 use bootloader_api::info::FrameBuffer;
 use embedded_graphics::{
     image::Image,
@@ -8,6 +9,7 @@ use tinytga::Tga;
 
 use crate::graphics::display::Display;
 
+/// Draw a TGA image on the screen.
 pub async fn draw_tga(frame_buffer: &mut FrameBuffer) {
     let mut display = Display::new(frame_buffer);
     let data = include_bytes!("./snoopy.tga");

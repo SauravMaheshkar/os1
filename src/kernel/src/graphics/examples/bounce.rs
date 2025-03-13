@@ -1,3 +1,4 @@
+//! Simple bouncing ball demo.
 use bootloader_api::info::FrameBuffer;
 use embedded_graphics::{
     pixelcolor::Rgb888,
@@ -7,6 +8,7 @@ use embedded_graphics::{
 
 use crate::graphics::display::Display;
 
+/// Bouncing ball demo.
 pub async fn bouncing_ball(frame_buffer: &mut FrameBuffer) {
     let mut display = Display::new(frame_buffer);
 

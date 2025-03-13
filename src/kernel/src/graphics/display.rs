@@ -1,5 +1,7 @@
+//! Graphics display driver for the framebuffer.
+//!
 //! # References
-//! * https://github.com/ChocolateLoverRaj/code-runner/blob/main/kernel/src/frame_buffer.rs
+//! * <https://github.com/ChocolateLoverRaj/code-runner/blob/main/kernel/src/frame_buffer.rs>
 
 use bootloader_api::info::{FrameBuffer, PixelFormat};
 use embedded_graphics::{
@@ -12,15 +14,25 @@ use embedded_graphics::{
 
 use super::primitives::{set_pixel_in, Position};
 
+/// A display that can draw to the framebuffer.
 pub struct Display<'f> {
+    /// The framebuffer to draw on.
     framebuffer: &'f mut FrameBuffer,
 }
 
 impl Display<'_> {
+    /// Create a new display.
     pub fn new(framebuffer: &mut FrameBuffer) -> Display {
         Display { framebuffer }
     }
 
+    /// Draw a pixel on the display.
+    ///
+    /// uses the [`set_pixel_in`] function to set the pixel in the framebuffer.
+    ///
+    /// # Arguments
+    /// * `pixel` - The pixel to draw as a [`Pixel`].
+    /// * `color` - The color of the pixel as a [`Rgb888`] color.
     fn draw_pixel(&mut self, Pixel(Point { x, y }, color): Pixel<Rgb888>) {
         set_pixel_in(
             self.framebuffer,
@@ -32,17 +44,20 @@ impl Display<'_> {
         );
     }
 
+    /// Get a reference to the framebuffer.
     pub fn framebuffer(&self) -> &FrameBuffer {
         self.framebuffer
     }
 }
 
 impl DrawTarget for Display<'_> {
+    /// The color type of the display.
     type Color = Rgb888;
 
     /// Drawing operations can never fail.
     type Error = core::convert::Infallible;
 
+    /// Draw from a given iterator of pixels.
     fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
@@ -54,6 +69,14 @@ impl DrawTarget for Display<'_> {
         Ok(())
     }
 
+    /// Fill a contiguous area with a color.
+    ///
+    /// uses the [`set_pixel_in`] function to set the pixel in the framebuffer.
+    ///
+    /// # Arguments
+    /// * `area` - The area to fill as a
+    ///   [`embedded_graphics::primitives::Rectangle`].
+    /// * `colors` - The colors to fill the area with as an iterator
     fn fill_contiguous<I>(
         &mut self,
         area: &embedded_graphics::primitives::Rectangle,
@@ -104,6 +127,12 @@ impl DrawTarget for Display<'_> {
         Ok(())
     }
 
+    /// Fill the entire display with a color.
+    ///
+    /// # Arguments
+    /// * `area` - The area to fill as a
+    ///   [`embedded_graphics::primitives::Rectangle`].
+    /// * `color` - The color to fill the display with.
     fn fill_solid(
         &mut self,
         area: &embedded_graphics::primitives::Rectangle,
@@ -152,6 +181,7 @@ impl DrawTarget for Display<'_> {
         Ok(())
     }
 
+    /// Clear the display with a color.
     fn clear(&mut self, color: Self::Color) -> Result<(), Self::Error> {
         if color == Rgb888::BLACK {
             self.framebuffer.buffer_mut().fill(0);
@@ -163,6 +193,7 @@ impl DrawTarget for Display<'_> {
 }
 
 impl OriginDimensions for Display<'_> {
+    /// Get the dimensions of the display.
     fn size(&self) -> Size {
         let info = self.framebuffer.info();
 

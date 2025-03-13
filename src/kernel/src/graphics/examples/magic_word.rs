@@ -1,3 +1,4 @@
+//! Ah, ah, ah! You didn't say the magic word!
 extern crate alloc;
 
 use alloc::vec::Vec;
@@ -11,6 +12,7 @@ use embedded_graphics::{
 
 use crate::{devices::timer::get_ticks, graphics::display::Display};
 
+/// Display the Nedry gif.
 pub async fn magic_word(frame_buffer: &mut FrameBuffer) {
     let mut display = Display::new(frame_buffer);
     let data = include_bytes!("./nedry.gif");

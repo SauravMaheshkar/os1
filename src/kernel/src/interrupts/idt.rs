@@ -1,3 +1,4 @@
+//! Interrupt Descriptor Table (IDT) module.
 use spin::Lazy;
 use x86_64::structures::idt::InterruptDescriptorTable;
 
@@ -25,6 +26,9 @@ pub static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
     idt
 });
 
+/// Initialize the IDT
+///
+/// Loads the IDT into the CPU
 pub fn init() {
     IDT.load();
 }
