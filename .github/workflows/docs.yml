@@ -43,7 +43,7 @@ jobs:
               run: cargo clean --doc -Z bindeps
 
             - name: Build docs
-              run: cd src/kernel && cargo doc -Zbuild-std=std,panic_abort --no-deps --document-private-items
+              run: cd src/kernel && cargo doc --no-deps --document-private-items
 
             - name: Add redirect
               run: echo '<meta http-equiv="refresh" content="0;url=kernel/index.html">' > target/x86_64-unknown-none/doc/index.html
