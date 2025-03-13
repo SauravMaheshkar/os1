@@ -1,5 +1,7 @@
 ![](assets/demo.png)
 
+[![docs](https://github.com/SauravMaheshkar/os1/actions/workflows/docs.yml/badge.svg)](https://github.com/SauravMaheshkar/os1/actions/workflows/docs.yml)
+
 ## 🚀 Features
 
 * [x] bootloader + bootinfo parsing (using the latest bootloader `v0.11.X` crate.)
