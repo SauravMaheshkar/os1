@@ -1,2 +1,5 @@
 [unstable]
 bindeps = true
+
+[build]
+rustdocflags=["--default-theme=ayu"]
